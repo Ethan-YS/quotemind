@@ -12,7 +12,7 @@
   --blue:#1e50b3; --blue-soft:#e8edf8; --red:#a92419; --red-soft:#f8ebe8;
   --green:#2f6b3a; --amber:#9a6b0a;
   --mono:'IBM Plex Mono',ui-monospace,monospace;
-  --sans:'Archivo',system-ui,sans-serif;
+  --sans:'Archivo','PingFang SC','Hiragino Sans GB',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{background:#dedacd}
@@ -43,6 +43,10 @@ header>div:last-child{border-right:none}
 .dot.b{background:var(--blue);border-color:var(--blue)}
 .dot.k{background:var(--ink)}
 .dot.r{background:var(--red);border-color:var(--red)}
+.lang-btn{margin-left:auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+  background:none;border:1.5px solid var(--ink);padding:3px 10px;cursor:pointer;color:var(--ink)}
+.lang-btn:hover{background:var(--ink);color:var(--paper)}
+.lang-btn b{font-weight:600;color:inherit;font-size:10.5px;text-transform:none;letter-spacing:.08em}
 /* ============ layout ============ */
 main{display:grid;grid-template-columns:212px 1fr;flex:1}
 /* ---- op rail ---- */
@@ -154,18 +158,19 @@ footer{border-top:2px solid var(--ink);padding:10px 18px;display:flex;justify-co
 <header>
   <div class="brand">
     <h1>Quote<span>Mind</span></h1>
-    <p>AI RFQ → Quotation pipeline · human-in-the-loop workbench</p>
+    <p id="tagline">AI RFQ → Quotation pipeline · human-in-the-loop workbench</p>
   </div>
-  <div><div class="tb-label">RFQ Ref.</div><div class="tb-value">2026-0847</div></div>
-  <div><div class="tb-label">Part</div><div class="tb-value">GS-4032 Rev. B</div></div>
-  <div id="modeBadge"><div class="tb-label">Mode</div><div class="tb-value">…</div></div>
+  <div><div class="tb-label" data-i18n="tb_rfq">RFQ Ref.</div><div class="tb-value">2026-0847</div></div>
+  <div><div class="tb-label" data-i18n="tb_part">Part</div><div class="tb-value">GS-4032 Rev. B</div></div>
+  <div id="modeBadge"><div class="tb-label" data-i18n="tb_mode">Mode</div><div class="tb-value">…</div></div>
 </header>
 
 <div class="legend">
-  <b>Ink legend</b>
-  <span><i class="dot k"></i> source fact</span>
-  <span><i class="dot b"></i> AI draft — editable, engineer signs off</span>
-  <span><i class="dot r"></i> flags &amp; approvals</span>
+  <b data-i18n="legend">Ink legend</b>
+  <span><i class="dot k"></i><span data-i18n="legend_k">source fact</span></span>
+  <span><i class="dot b"></i><span data-i18n="legend_b">AI draft — editable, engineer signs off</span></span>
+  <span><i class="dot r"></i><span data-i18n="legend_r">flags &amp; approvals</span></span>
+  <button class="lang-btn" id="langBtn" title="切换到中文界面"><b>EN</b> / 中</button>
 </div>
 
 <main>
@@ -174,22 +179,135 @@ footer{border-top:2px solid var(--ink);padding:10px 18px;display:flex;justify-co
 </main>
 
 <footer>
-  <span>PrecisionMotion GmbH — quotation engineering</span>
+  <span data-i18n="footer_l">PrecisionMotion GmbH — quotation engineering</span>
   <span>QuoteMind prototype · IndustrialMind.ai solution design challenge</span>
 </footer>
 
 <script>
+/* ================= i18n ================= */
+const L = {
+en:{
+  tagline:'AI RFQ → Quotation pipeline · human-in-the-loop workbench',
+  tb_rfq:'RFQ Ref.', tb_part:'Part', tb_mode:'Mode', mode_demo:'DEMO REPLAY',
+  legend:'Ink legend', legend_k:'source fact',
+  legend_b:'AI draft — editable, engineer signs off', legend_r:'flags & approvals',
+  footer_l:'PrecisionMotion GmbH — quotation engineering',
+  op10:'RFQ Intake', op10s:'source documents', op20:'Drawing Review', op20s:'feature card',
+  op30:'Similar Parts', op30s:'history retrieval', op40:'BOM & Routing', op40s:'drafts',
+  op50:'Quotation', op50s:'cost & letter', stamp:'REVIEWED',
+  rail_note:'Every stage is a gate: the next stage runs on the <span style="color:var(--blue)">reviewed</span> output, not the raw AI draft.',
+  of50:'/ 50',
+  s10_t:'RFQ Intake',
+  s10_d:'Incoming customer inquiry with attached engineering drawing. Source documents — black ink. Nothing here was generated.',
+  s10_mail:'Customer e-mail', s10_att:'Attachment — engineering drawing',
+  s10_hint:'Confirms the intake is complete and legible. OP 20 sends the drawing to the vision model and extracts a structured feature card.',
+  s10_load:'Reading drawing GS-4032 Rev. B — extracting features, tolerances, critical requirements',
+  s20_t:'Drawing Review',
+  s20_d:'AI-extracted part feature card. Blue values are drafts — click any of them to correct; your corrections feed every later stage. Confidence chips route attention.',
+  s20_id:'Identification', s20_ft:'Extracted features', s20_items:'items',
+  s20_cr:'Critical requirements', s20_flags:'⚑ Review flags — must be resolved by the engineer',
+  th_part:'Part', th_drawing:'Drawing', th_customer:'Customer', th_qty:'Quantities',
+  th_material:'Material', th_gtol:'Gen. tol.', th_envelope:'Envelope', th_type:'Type',
+  th_feature:'Feature', th_spec:'Spec', th_impl:'Manufacturing implication',
+  s20_hint:'Approving signs off the feature card as engineering truth. OP 30 searches part history using these (possibly corrected) values.',
+  s20_load:'Searching part history — structured feature matching, scoring, cost-transferability check',
+  s30_t:'Similar Parts',
+  s30_d:n=>`Deterministic feature matching over ${n} historical parts — every score is explainable, no LLM involved. Cost history transfers only where the basis is comparable.`,
+  s30_top:'Top matches', s30_score:'score / 100', score:'SCORE',
+  s30_plant:'plant', s30_life:'pcs lifetime',
+  s30_ct:'COST TRANSFERABLE', s30_geo:'GEOMETRY ONLY',
+  s30_twins:'⚑ Geometry twins excluded from costing',
+  s30_hint:'Approving accepts this reference set as the cost-calibration basis. OP 40 drafts the BOM and process routing grounded in these references.',
+  s30_load:'Drafting BOM and process routing — grounding every line in reference actuals',
+  s40_t:'BOM & Routing',
+  s40_d:'Manufacturing BOM and process routing drafts. Every line cites its basis — which historical part or rule it was calibrated against. Edit any blue value.',
+  s40_bom:'BOM draft — single level', s40_raw:'raw', s40_gross:'gross',
+  th_pos:'Pos', th_item:'Item', th_unit:'€/unit', th_basis:'Basis', th_qty2:'Qty',
+  s40_rt:'Process routing draft', s40_plant:'recommended plant',
+  th_op:'Op', th_operation:'Operation', th_wc:'Workcenter', th_setup:'Setup min',
+  th_cycle:'Cycle min/pc', th_conf:'Conf.',
+  s40_rationale:'Plant rationale', s40_crit:'Critical operations',
+  s40_oq:'⚑ Open questions for the engineer',
+  s40_hint:'Approving freezes BOM and routing (with your edits) as the costing basis. OP 50 rolls up cost for both quantity scenarios and drafts the quotation letter.',
+  s40_load:'Rolling up costs for 250 / 500 pcs scenarios — drafting quotation letter',
+  s50_t:'Quotation',
+  s50_d:'Cost roll-up and customer-ready letter draft. The engineer gives final sign-off — nothing leaves the company without it.',
+  s50_initial:'· initial order', s50_annual:'· annual, 4 releases',
+  s50_cost:'unit cost', s50_margin:m=>`margin ${m}% on price`, s50_pc:'/pc',
+  cb_material:'material', cb_machining:'machining', cb_heat_treatment:'heat treatment',
+  cb_grinding:'grinding', cb_overhead:'overhead',
+  s50_comm:'Commercial terms', s50_tooling:'Tooling', s50_lead:'Lead time', s50_weeks:'weeks',
+  s50_ar:'Assumptions & risks — travel with the quote',
+  s50_letter:'Quotation letter draft', s50_editable:'editable',
+  approve:'Approve — release to next op',
+  final:'Final sign-off — release quotation', released:'Quotation released ✓',
+  final_hint:'In production this pushes the quote to the ERP/CRM and archives the full decision trail — every AI draft, every human edit, every basis reference.',
+  err:'⚑ Backend not reachable', err_start:'Start it with:',
+},
+zh:{
+  tagline:'AI 询价 → 报价流水线 · 人工在环审核台',
+  tb_rfq:'RFQ 编号', tb_part:'零件', tb_mode:'模式', mode_demo:'演示回放',
+  legend:'墨水图例', legend_k:'来源事实',
+  legend_b:'AI 草稿——可编辑，工程师签发', legend_r:'风险与批注',
+  footer_l:'PrecisionMotion GmbH — 报价工程部',
+  op10:'RFQ 收件', op10s:'来源文件', op20:'图纸审查', op20s:'特征卡',
+  op30:'相似零件', op30s:'历史检索', op40:'BOM 与工艺', op40s:'草稿',
+  op50:'报价', op50s:'成本与报价信', stamp:'已审核',
+  rail_note:'每个阶段都是一道门：下一阶段基于<span style="color:var(--blue)">已审核</span>的输出运行，而不是原始 AI 草稿。',
+  of50:'/ 50',
+  s10_t:'RFQ 收件',
+  s10_d:'客户询价原件与随附工程图纸。来源文件——黑色墨水，本页没有任何生成内容。',
+  s10_mail:'客户邮件', s10_att:'附件——工程图纸',
+  s10_hint:'确认收件完整、可读。OP 20 将把图纸送入视觉模型，抽取结构化特征卡。',
+  s10_load:'正在读取图纸 GS-4032 Rev. B——抽取特征、公差与关键要求',
+  s20_t:'图纸审查',
+  s20_d:'AI 抽取的零件特征卡。蓝色值为草稿——点击即可修正；你的修正会传入后续所有阶段。置信度标签指示注意力方向。',
+  s20_id:'零件识别', s20_ft:'抽取特征', s20_items:'项',
+  s20_cr:'关键要求', s20_flags:'⚑ 审查红旗——须由工程师逐条排除',
+  th_part:'零件', th_drawing:'图号', th_customer:'客户', th_qty:'数量',
+  th_material:'材料', th_gtol:'通用公差', th_envelope:'外形包络', th_type:'类型',
+  th_feature:'特征', th_spec:'规格', th_impl:'制造工艺含义',
+  s20_hint:'批准即把特征卡签发为工程事实。OP 30 将用这些（可能已修正的）值检索零件历史。',
+  s20_load:'正在检索零件历史——结构化特征匹配、评分、成本可迁移性核查',
+  s30_t:'相似零件',
+  s30_d:n=>`在 ${n} 个历史零件上做确定性特征匹配——每个分数都可解释，不经过 LLM。只有基准可比时，成本历史才可迁移。`,
+  s30_top:'最佳匹配', s30_score:'评分 / 100', score:'评分',
+  s30_plant:'工厂', s30_life:'件累计',
+  s30_ct:'成本可迁移', s30_geo:'仅几何参考',
+  s30_twins:'⚑ 几何双胞胎——已从成本校准中排除',
+  s30_hint:'批准即接受该参考集作为成本校准基准。OP 40 将基于这些参考起草 BOM 与工艺路线。',
+  s30_load:'正在起草 BOM 与工艺路线——每一行都锚定参考件实绩',
+  s40_t:'BOM 与工艺',
+  s40_d:'制造 BOM 与工艺路线草稿。每一行都注明依据——按哪个历史零件或规则校准。蓝色值均可编辑。',
+  s40_bom:'BOM 草稿——单层', s40_raw:'毛坯', s40_gross:'毛重',
+  th_pos:'序', th_item:'物料', th_unit:'€/单位', th_basis:'依据', th_qty2:'数量',
+  s40_rt:'工艺路线草稿', s40_plant:'推荐工厂',
+  th_op:'工序', th_operation:'作业内容', th_wc:'工作中心', th_setup:'调机 min',
+  th_cycle:'节拍 min/件', th_conf:'置信',
+  s40_rationale:'选厂理由', s40_crit:'关键工序', s40_oq:'⚑ 留给工程师的待确认问题',
+  s40_hint:'批准即冻结 BOM 与工艺（含你的修改）作为核价基准。OP 50 将按两个数量场景汇总成本并起草报价信。',
+  s40_load:'正在按 250 / 500 件场景汇总成本——起草报价信',
+  s50_t:'报价',
+  s50_d:'成本汇总与客户报价信草稿。工程师最终签发——未经签发，任何内容都不会发出公司。',
+  s50_initial:'· 首批订单', s50_annual:'· 年量 · 分 4 批交付',
+  s50_cost:'单件成本', s50_margin:m=>`售价毛利 ${m}%`, s50_pc:'/件',
+  cb_material:'材料', cb_machining:'机加', cb_heat_treatment:'热处理',
+  cb_grinding:'磨削', cb_overhead:'制造费用',
+  s50_comm:'商务条款', s50_tooling:'工装', s50_lead:'交期', s50_weeks:'周',
+  s50_ar:'假设与风险——随报价单同行',
+  s50_letter:'报价信草稿', s50_editable:'可编辑',
+  approve:'批准——放行至下一工序',
+  final:'最终签发——放行报价', released:'报价已签发 ✓',
+  final_hint:'生产环境中，签发会将报价推入 ERP/CRM，并归档完整决策链——每份 AI 草稿、每次人工修改、每条依据引用。',
+  err:'⚑ 后端未连接', err_start:'启动命令：',
+},
+};
+let lang = localStorage.getItem('qm-lang') || 'en';
+const t = k => (L[lang][k] ?? L.en[k] ?? k);
+
 /* ================= state & helpers ================= */
 const S = { rfq:null, card:null, matches:null, bom:null, routing:null, quote:null };
 let current = 0, done = -1;   // done = highest approved stage index
-
-const OPS = [
-  {op:'10', name:'RFQ Intake',      sub:'source documents'},
-  {op:'20', name:'Drawing Review',  sub:'feature card'},
-  {op:'30', name:'Similar Parts',   sub:'history retrieval'},
-  {op:'40', name:'BOM & Routing',   sub:'drafts'},
-  {op:'50', name:'Quotation',       sub:'cost & letter'},
-];
 
 const $ = sel => document.querySelector(sel);
 const el = (tag, cls, html) => { const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; };
@@ -221,25 +339,39 @@ async function api(path, body){
 }
 const wait = ms => new Promise(r=>setTimeout(r,ms));
 
+/* ================= chrome (header/legend/footer) ================= */
+function renderChrome(){
+  document.documentElement.lang = lang==='zh' ? 'zh-CN' : 'en';
+  $('#tagline').textContent = t('tagline');
+  document.querySelectorAll('[data-i18n]').forEach(n=>{ n.innerHTML = t(n.dataset.i18n); });
+  $('#langBtn').innerHTML = lang==='en' ? '<b>EN</b> / 中' : 'EN / <b>中文</b>';
+  const badge = $('#modeBadge .tb-value');
+  if(badge.dataset.mode) badge.textContent = badge.dataset.mode==='live' ? badge.dataset.label : t('mode_demo');
+}
+
 /* ================= rail ================= */
 function renderRail(){
+  const OPS = [
+    {op:'10', name:t('op10'), sub:t('op10s')}, {op:'20', name:t('op20'), sub:t('op20s')},
+    {op:'30', name:t('op30'), sub:t('op30s')}, {op:'40', name:t('op40'), sub:t('op40s')},
+    {op:'50', name:t('op50'), sub:t('op50s')},
+  ];
   const rail = $('#rail'); rail.innerHTML='';
   OPS.forEach((o,i)=>{
     const d = el('div','op'+(i===current?' active':'')+(i<=done?' done':'')+(i<=done+1?' reachable':''));
     d.innerHTML = `<div class="op-num">${o.op}</div>
       <div><div class="op-name">${o.name}</div><div class="op-sub">${o.sub}</div></div>
-      <span class="tick">REVIEWED</span>`;
+      <span class="tick">${t('stamp')}</span>`;
     if(i<=done+1) d.onclick = ()=>{ current=i; render(); };
     rail.appendChild(d);
   });
-  rail.appendChild(el('div','rail-note',
-    'Every stage is a gate: the next stage runs on the <span style="color:var(--blue)">reviewed</span> output, not the raw AI draft.'));
+  rail.appendChild(el('div','rail-note',t('rail_note')));
 }
 
 /* ================= stamp animation ================= */
 function slamStamp(btn){
   const r = btn.getBoundingClientRect();
-  const st = el('div','stamp','REVIEWED');
+  const st = el('div','stamp',t('stamp'));
   st.style.left = (r.right+18)+'px'; st.style.top = (r.top-6)+'px';
   document.body.appendChild(st);
   requestAnimationFrame(()=>st.classList.add('play'));
@@ -248,7 +380,7 @@ function slamStamp(btn){
 
 function approveBar(hint, onNext){
   const bar = el('div','approve');
-  const btn = el('button','stamp-btn','Approve — release to next op');
+  const btn = el('button','stamp-btn',t('approve'));
   btn.onclick = async ()=>{ btn.disabled=true; slamStamp(btn); await wait(450); await onNext(); };
   bar.appendChild(btn);
   bar.appendChild(el('div','hint',hint));
@@ -265,189 +397,184 @@ function loadingView(msg){
 
 /* ================= stage renderers ================= */
 function stageHead(title, opNo, desc){
-  return `<div class="stage-head"><h2>${title}</h2><span class="mono">OP ${opNo} / 50</span></div>
+  return `<div class="stage-head"><h2>${title}</h2><span class="mono">OP ${opNo} ${t('of50')}</span></div>
           <p class="stage-desc">${desc}</p>`;
 }
 
-function render(){ renderRail(); [rIntake,rCard,rMatches,rBomRouting,rQuote][current](); window.scrollTo({top:0}); }
+function render(){ renderChrome(); renderRail(); [rIntake,rCard,rMatches,rBomRouting,rQuote][current](); window.scrollTo({top:0}); }
 
 /* ---- OP10 intake ---- */
 function rIntake(){
   const stage=$('#stage');
-  stage.innerHTML = stageHead('RFQ Intake','10',
-    'Incoming customer inquiry with attached engineering drawing. Source documents — black ink. Nothing here was generated.');
+  stage.innerHTML = stageHead(t('s10_t'),'10',t('s10_d'));
   const g = el('div','intake');
   const p1 = el('div','panel'); p1.innerHTML =
-    `<div class="panel-cap"><span>Customer e-mail</span><span>rfq_email.txt</span></div><pre class="rfq-pre">${esc(S.rfq)}</pre>`;
+    `<div class="panel-cap"><span>${t('s10_mail')}</span><span>rfq_email.txt</span></div><pre class="rfq-pre">${esc(S.rfq)}</pre>`;
   const p2 = el('div','panel drawing-frame'); p2.innerHTML =
-    `<div class="panel-cap"><span>Attachment — engineering drawing</span><span>GS-4032_RevB</span></div><img src="/samples/GS-4032_RevB.svg" alt="drawing">`;
+    `<div class="panel-cap"><span>${t('s10_att')}</span><span>GS-4032_RevB</span></div><img src="/samples/GS-4032_RevB.svg" alt="drawing">`;
   g.append(p1,p2); stage.appendChild(g);
-  stage.appendChild(approveBar('Confirms the intake is complete and legible. OP 20 sends the drawing to the vision model and extracts a structured feature card.',
+  stage.appendChild(approveBar(t('s10_hint'),
     async ()=>{
-      loadingView('Reading drawing GS-4032 Rev. B — extracting features, tolerances, critical requirements');
+      loadingView(t('s10_load'));
       const t0=Date.now();
       S.card = await api('/stage/drawing',{rfq_text:S.rfq});
       await wait(Math.max(0, 1400-(Date.now()-t0)));
-      done=0; current=1; render();
+      done=Math.max(done,0); current=1; render();
     }));
 }
 
 /* ---- OP20 feature card ---- */
 function rCard(){
   const c=S.card, stage=$('#stage');
-  stage.innerHTML = stageHead('Drawing Review','20',
-    'AI-extracted part feature card. Blue values are drafts — click any of them to correct; your corrections feed every later stage. Confidence chips route attention.');
+  stage.innerHTML = stageHead(t('s20_t'),'20',t('s20_d'));
   const conf = f => { const lv=c.field_confidence?.[f]; return lv?`<span class="chip ${lv}">${lv[0].toUpperCase()}</span>`:''; };
 
-  const idw = el('div','panel'); idw.innerHTML = `<div class="panel-cap"><span>Identification</span></div>
+  const idw = el('div','panel'); idw.innerHTML = `<div class="panel-cap"><span>${t('s20_id')}</span></div>
     <div class="panel-body"><table><tbody>
-      <tr><th style="width:32%">Part</th><td>${ed(0,'card.part_name')}</td><th style="width:14%">Drawing</th><td class="mono">${esc(c.drawing_no)} Rev. ${esc(c.revision)}</td></tr>
-      <tr><th>Customer</th><td>${esc(c.customer)}</td><th>Quantities</th><td class="mono">${ed(0,'card.quantities.0')} + ${ed(0,'card.quantities.1')}/yr ${conf('quantities')}</td></tr>
-      <tr><th>Material</th><td>${ed(0,'card.material')} ${conf('material')}</td><th>Gen. tol.</th><td class="mono">${esc(c.general_tolerances)}</td></tr>
-      <tr><th>Envelope</th><td class="mono">Ø${ed(0,'card.max_dia_mm')} × ${ed(0,'card.length_mm')} mm ${conf('max_dia_mm')}</td><th>Type</th><td class="mono">${esc(c.part_type)}</td></tr>
+      <tr><th style="width:32%">${t('th_part')}</th><td>${ed(0,'card.part_name')}</td><th style="width:14%">${t('th_drawing')}</th><td class="mono">${esc(c.drawing_no)} Rev. ${esc(c.revision)}</td></tr>
+      <tr><th>${t('th_customer')}</th><td>${esc(c.customer)}</td><th>${t('th_qty')}</th><td class="mono">${ed(0,'card.quantities.0')} + ${ed(0,'card.quantities.1')}/yr ${conf('quantities')}</td></tr>
+      <tr><th>${t('th_material')}</th><td>${ed(0,'card.material')} ${conf('material')}</td><th>${t('th_gtol')}</th><td class="mono">${esc(c.general_tolerances)}</td></tr>
+      <tr><th>${t('th_envelope')}</th><td class="mono">Ø${ed(0,'card.max_dia_mm')} × ${ed(0,'card.length_mm')} mm ${conf('max_dia_mm')}</td><th>${t('th_type')}</th><td class="mono">${esc(c.part_type)}</td></tr>
     </tbody></table></div>`;
   stage.appendChild(idw);
 
   const ft = el('div','panel');
-  ft.innerHTML = `<div class="panel-cap"><span>Extracted features</span><span>${c.features.length} items</span></div>
-    <div class="panel-body"><table><thead><tr><th style="width:24%">Feature</th><th style="width:36%">Spec</th><th>Manufacturing implication</th></tr></thead>
+  ft.innerHTML = `<div class="panel-cap"><span>${t('s20_ft')}</span><span>${c.features.length} ${t('s20_items')}</span></div>
+    <div class="panel-body"><table><thead><tr><th style="width:24%">${t('th_feature')}</th><th style="width:36%">${t('th_spec')}</th><th>${t('th_impl')}</th></tr></thead>
     <tbody>${c.features.map((f,i)=>`<tr><td>${esc(f.feature)}</td><td class="mono">${ed(0,`card.features.${i}.spec`)}</td><td>${esc(f.manufacturing_implication)}</td></tr>`).join('')}</tbody></table></div>`;
   stage.appendChild(ft);
 
   const cr = el('div','panel');
-  cr.innerHTML = `<div class="panel-cap"><span>Critical requirements</span></div>
+  cr.innerHTML = `<div class="panel-cap"><span>${t('s20_cr')}</span></div>
     <div class="panel-body"><ul class="note-list">${c.critical_requirements.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
   stage.appendChild(cr);
 
   if(c.review_flags?.length){
     const fb = el('div','flag-box');
-    fb.innerHTML = `<div class="panel-cap">⚑ Review flags — must be resolved by the engineer</div>
+    fb.innerHTML = `<div class="panel-cap">${t('s20_flags')}</div>
       <ul>${c.review_flags.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
     stage.appendChild(fb);
   }
 
-  stage.appendChild(approveBar('Approving signs off the feature card as engineering truth. OP 30 searches part history using these (possibly corrected) values.',
+  stage.appendChild(approveBar(t('s20_hint'),
     async ()=>{
-      loadingView('Searching 12-part history — structured feature matching, scoring, cost-transferability check');
+      loadingView(t('s20_load'));
       const t0=Date.now();
       S.matches = await api('/stage/retrieve',{card:S.card});
       await wait(Math.max(0, 1100-(Date.now()-t0)));
-      done=1; current=2; render();
+      done=Math.max(done,1); current=2; render();
     }));
 }
 
 /* ---- OP30 similar parts ---- */
 function rMatches(){
   const m=S.matches, stage=$('#stage');
-  stage.innerHTML = stageHead('Similar Parts','30',
-    `Deterministic feature matching over ${m.searched} historical parts — every score is explainable, no LLM involved. Cost history transfers only where the basis is comparable.`);
+  stage.innerHTML = stageHead(t('s30_t'),'30', t('s30_d')(m.searched));
   const list = el('div','panel');
-  list.innerHTML = `<div class="panel-cap"><span>Top matches</span><span>score / 100</span></div>` +
+  list.innerHTML = `<div class="panel-cap"><span>${t('s30_top')}</span><span>${t('s30_score')}</span></div>` +
     m.matches.map(x=>{
       const p=x.part, lo=p.last_order;
       return `<div class="match">
-        <div class="score">${x.score}<small>SCORE</small></div>
-        <div><h4>${esc(p.name)}</h4><div class="pn">${esc(p.part_no)} · ${esc(p.material)} · plant ${esc(p.plant)} · ${esc(p.qty_produced_total)} pcs lifetime</div>
+        <div class="score">${x.score}<small>${t('score')}</small></div>
+        <div><h4>${esc(p.name)}</h4><div class="pn">${esc(p.part_no)} · ${esc(p.material)} · ${t('s30_plant')} ${esc(p.plant)} · ${esc(p.qty_produced_total)} ${t('s30_life')}</div>
           <div class="reasons">${x.reasons.map(esc).join(' &nbsp;·&nbsp; ')}</div></div>
         <div class="cost">${lo.year}: €${lo.unit_cost_eur.toFixed(2)}/pc @ ${lo.qty}<br>
-          <span class="transfer ${x.cost_transferable?'':'no'}">${x.cost_transferable?'COST TRANSFERABLE':'GEOMETRY ONLY'}</span></div>
+          <span class="transfer ${x.cost_transferable?'':'no'}">${x.cost_transferable?t('s30_ct'):t('s30_geo')}</span></div>
       </div>`; }).join('');
   stage.appendChild(list);
 
   if(m.geometry_twins_excluded?.length){
     const fb = el('div','flag-box');
-    fb.innerHTML = `<div class="panel-cap">⚑ Geometry twins excluded from costing</div>
-      <ul>${m.geometry_twins_excluded.map(t=>`<li><b>${esc(t.part_no)}</b> — ${esc(t.name)} (${esc(t.material)}). ${esc(t.note)}</li>`).join('')}</ul>`;
+    fb.innerHTML = `<div class="panel-cap">${t('s30_twins')}</div>
+      <ul>${m.geometry_twins_excluded.map(tw=>`<li><b>${esc(tw.part_no)}</b> — ${esc(tw.name)} (${esc(tw.material)}). ${esc(tw.note)}</li>`).join('')}</ul>`;
     stage.appendChild(fb);
   }
 
-  stage.appendChild(approveBar('Approving accepts this reference set as the cost-calibration basis. OP 40 drafts the BOM and process routing grounded in these references.',
+  stage.appendChild(approveBar(t('s30_hint'),
     async ()=>{
-      loadingView('Drafting BOM and process routing — grounding every line in reference actuals');
+      loadingView(t('s30_load'));
       const t0=Date.now();
       S.bom = await api('/stage/bom',{card:S.card,matches:S.matches});
       S.routing = await api('/stage/process',{card:S.card,bom:S.bom,matches:S.matches});
       await wait(Math.max(0, 1600-(Date.now()-t0)));
-      done=2; current=3; render();
+      done=Math.max(done,2); current=3; render();
     }));
 }
 
 /* ---- OP40 BOM + routing ---- */
 function rBomRouting(){
   const b=S.bom, r=S.routing, stage=$('#stage');
-  stage.innerHTML = stageHead('BOM & Routing','40',
-    'Manufacturing BOM and process routing drafts. Every line cites its basis — which historical part or rule it was calibrated against. Edit any blue value.');
+  stage.innerHTML = stageHead(t('s40_t'),'40',t('s40_d'));
 
   const bom = el('div','panel');
-  bom.innerHTML = `<div class="panel-cap"><span>BOM draft — single level</span><span>raw: ${esc(b.raw_material.stock_size)} · gross ${esc(b.raw_material.gross_weight_kg)} kg</span></div>
-    <div class="panel-body"><table><thead><tr><th>Pos</th><th style="width:22%">Item</th><th style="width:30%">Spec</th><th>Qty</th><th>€/unit</th><th>Basis</th></tr></thead>
+  bom.innerHTML = `<div class="panel-cap"><span>${t('s40_bom')}</span><span>${t('s40_raw')}: ${esc(b.raw_material.stock_size)} · ${t('s40_gross')} ${esc(b.raw_material.gross_weight_kg)} kg</span></div>
+    <div class="panel-body"><table><thead><tr><th>${t('th_pos')}</th><th style="width:22%">${t('th_item')}</th><th style="width:30%">${t('th_spec')}</th><th>${t('th_qty2')}</th><th>${t('th_unit')}</th><th>${t('th_basis')}</th></tr></thead>
     <tbody>${b.bom_lines.map((l,i)=>`<tr><td class="mono">${l.pos}</td><td>${esc(l.item)}</td><td class="mono">${ed(0,`bom.bom_lines.${i}.spec`)}</td>
       <td class="num">${l.qty} ${esc(l.unit)}</td><td class="num">${ed(0,`bom.bom_lines.${i}.est_unit_cost_eur`)}</td>
       <td style="font-size:11px;color:#5b5748">${esc(l.basis)}</td></tr>`).join('')}</tbody></table></div>`;
   stage.appendChild(bom);
 
   const rt = el('div','panel');
-  rt.innerHTML = `<div class="panel-cap"><span>Process routing draft</span><span>recommended plant: ${esc(r.recommended_plant.plant)}</span></div>
-    <div class="panel-body"><table><thead><tr><th>Op</th><th style="width:34%">Operation</th><th>Workcenter</th><th>Setup min</th><th>Cycle min/pc</th><th>Conf.</th><th>Basis</th></tr></thead>
+  rt.innerHTML = `<div class="panel-cap"><span>${t('s40_rt')}</span><span>${t('s40_plant')}: ${esc(r.recommended_plant.plant)}</span></div>
+    <div class="panel-body"><table><thead><tr><th>${t('th_op')}</th><th style="width:34%">${t('th_operation')}</th><th>${t('th_wc')}</th><th>${t('th_setup')}</th><th>${t('th_cycle')}</th><th>${t('th_conf')}</th><th>${t('th_basis')}</th></tr></thead>
     <tbody>${r.routing.map((o,i)=>`<tr><td class="mono">${o.op}</td><td>${esc(o.operation)}</td><td class="mono">${esc(o.workcenter)}</td>
       <td class="num">${ed(0,`routing.routing.${i}.setup_min`)}</td><td class="num">${ed(0,`routing.routing.${i}.cycle_min_per_pc`)}</td>
       <td><span class="chip ${o.confidence}">${o.confidence[0].toUpperCase()}</span></td>
       <td style="font-size:11px;color:#5b5748">${esc(o.basis)}</td></tr>`).join('')}</tbody></table>
-    <p style="font-family:var(--mono);font-size:11px;margin-top:10px;color:#4c483a">Plant rationale: ${esc(r.recommended_plant.why)}</p></div>`;
+    <p style="font-family:var(--mono);font-size:11px;margin-top:10px;color:#4c483a">${t('s40_rationale')}: ${esc(r.recommended_plant.why)}</p></div>`;
   stage.appendChild(rt);
 
   const notes = el('div','panel');
-  notes.innerHTML = `<div class="panel-cap"><span>Critical operations</span></div>
+  notes.innerHTML = `<div class="panel-cap"><span>${t('s40_crit')}</span></div>
     <div class="panel-body"><ul class="note-list">${r.critical_ops_notes.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
   stage.appendChild(notes);
 
   const oq = [...(b.open_questions||[]), ...(r.open_questions||[])];
   if(oq.length){
     const fb = el('div','flag-box');
-    fb.innerHTML = `<div class="panel-cap">⚑ Open questions for the engineer</div><ul>${oq.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+    fb.innerHTML = `<div class="panel-cap">${t('s40_oq')}</div><ul>${oq.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
     stage.appendChild(fb);
   }
 
-  stage.appendChild(approveBar('Approving freezes BOM and routing (with your edits) as the costing basis. OP 50 rolls up cost for both quantity scenarios and drafts the quotation letter.',
+  stage.appendChild(approveBar(t('s40_hint'),
     async ()=>{
-      loadingView('Rolling up costs for 250 / 500 pcs scenarios — drafting quotation letter');
+      loadingView(t('s40_load'));
       const t0=Date.now();
       S.quote = await api('/stage/quote',{rfq_text:S.rfq,card:S.card,bom:S.bom,routing:S.routing,matches:S.matches});
       await wait(Math.max(0, 1400-(Date.now()-t0)));
-      done=3; current=4; render();
+      done=Math.max(done,3); current=4; render();
     }));
 }
 
 /* ---- OP50 quotation ---- */
 function rQuote(){
   const q=S.quote, stage=$('#stage');
-  stage.innerHTML = stageHead('Quotation','50',
-    'Cost roll-up and customer-ready letter draft. The engineer gives final sign-off — nothing leaves the company without it.');
+  stage.innerHTML = stageHead(t('s50_t'),'50',t('s50_d'));
   const COLORS = {material:'#1e50b3', machining:'#191813', heat_treatment:'#a92419', grinding:'#9a6b0a', overhead:'#7a7562'};
 
   const sc = el('div','scenarios');
   q.scenarios.forEach(s=>{
     const total = Object.values(s.cost_breakdown_eur).reduce((a,b)=>a+b,0);
     const bar = Object.entries(s.cost_breakdown_eur).map(([k,v])=>`<i style="width:${(v/total*100).toFixed(1)}%;background:${COLORS[k]}"></i>`).join('');
-    const leg = Object.entries(s.cost_breakdown_eur).map(([k,v])=>`<em><i class="dot" style="background:${COLORS[k]}"></i>${k.replace('_',' ')} €${v.toFixed(1)}</em>`).join('');
+    const leg = Object.entries(s.cost_breakdown_eur).map(([k,v])=>`<em><i class="dot" style="background:${COLORS[k]}"></i>${t('cb_'+k)} €${v.toFixed(1)}</em>`).join('');
     sc.appendChild(el('div','scn',
-      `<div class="qty">${s.qty} pcs ${s.qty===250?'· initial order':'· annual, 4 releases'}</div>
-       <div class="price">€ ${s.unit_price_eur.toFixed(2)}<small> /pc</small></div>
-       <div class="cost-line">unit cost €${s.unit_cost_eur.toFixed(2)} · margin ${s.margin_pct}% on price</div>
+      `<div class="qty">${s.qty} pcs ${s.qty===250?t('s50_initial'):t('s50_annual')}</div>
+       <div class="price">€ ${s.unit_price_eur.toFixed(2)}<small> ${t('s50_pc')}</small></div>
+       <div class="cost-line">${t('s50_cost')} €${s.unit_cost_eur.toFixed(2)} · ${t('s50_margin')(s.margin_pct)}</div>
        <div class="stackbar">${bar}</div><div class="sb-legend">${leg}</div>`));
   });
   stage.appendChild(sc);
 
   const comm = el('div','panel');
-  comm.innerHTML = `<div class="panel-cap"><span>Commercial terms</span></div>
+  comm.innerHTML = `<div class="panel-cap"><span>${t('s50_comm')}</span></div>
     <div class="panel-body"><table><tbody>
-      <tr><th style="width:20%">Tooling</th><td class="mono">€ ${q.tooling_cost_eur.amount}</td><td style="font-size:11.5px;color:#5b5748">${esc(q.tooling_cost_eur.note)}</td></tr>
-      <tr><th>Lead time</th><td class="mono">${q.lead_time.first_batch_weeks} weeks</td><td style="font-size:11.5px;color:#5b5748">${esc(q.lead_time.note)}</td></tr>
+      <tr><th style="width:20%">${t('s50_tooling')}</th><td class="mono">€ ${q.tooling_cost_eur.amount}</td><td style="font-size:11.5px;color:#5b5748">${esc(q.tooling_cost_eur.note)}</td></tr>
+      <tr><th>${t('s50_lead')}</th><td class="mono">${q.lead_time.first_batch_weeks} ${t('s50_weeks')}</td><td style="font-size:11.5px;color:#5b5748">${esc(q.lead_time.note)}</td></tr>
     </tbody></table></div>`;
   stage.appendChild(comm);
 
   const ar = el('div','panel');
-  ar.innerHTML = `<div class="panel-cap"><span>Assumptions &amp; risks — travel with the quote</span></div>
+  ar.innerHTML = `<div class="panel-cap"><span>${t('s50_ar')}</span></div>
     <div class="panel-body" style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
       <ul class="note-list">${q.assumptions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
       <ul class="note-list" style="color:#6b1710">${q.risks.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
@@ -455,30 +582,38 @@ function rQuote(){
   stage.appendChild(ar);
 
   const lt = el('div','panel');
-  lt.innerHTML = `<div class="panel-cap"><span>Quotation letter draft</span><span>editable</span></div>
+  lt.innerHTML = `<div class="panel-cap"><span>${t('s50_letter')}</span><span>${t('s50_editable')}</span></div>
     <div class="letter ai" contenteditable="true" data-path="quote.quote_letter_draft">${esc(q.quote_letter_draft)}</div>`;
   stage.appendChild(lt);
 
   const bar = el('div','approve');
-  const btn = el('button','stamp-btn','Final sign-off — release quotation');
-  btn.onclick = ()=>{ slamStamp(btn); btn.disabled=true; btn.textContent='Quotation released ✓'; done=4; renderRail(); };
+  const btn = el('button','stamp-btn', done>=4 ? t('released') : t('final'));
+  if(done>=4) btn.disabled=true;
+  btn.onclick = ()=>{ slamStamp(btn); btn.disabled=true; btn.textContent=t('released'); done=4; renderRail(); };
   bar.appendChild(btn);
-  bar.appendChild(el('div','hint','In production this pushes the quote to the ERP/CRM and archives the full decision trail — every AI draft, every human edit, every basis reference.'));
+  bar.appendChild(el('div','hint',t('final_hint')));
   stage.appendChild(bar);
 }
 
 /* ================= boot ================= */
+$('#langBtn').onclick = ()=>{
+  lang = lang==='en' ? 'zh' : 'en';
+  localStorage.setItem('qm-lang', lang);
+  render();
+};
+
 (async function(){
   try{
     const [st, sample] = await Promise.all([api('/status'), api('/sample')]);
     const badge = $('#modeBadge .tb-value');
-    badge.textContent = st.mode==='live' ? `LIVE · ${st.model}` : 'DEMO REPLAY';
+    badge.dataset.mode = st.mode;
+    badge.dataset.label = `LIVE · ${st.model}`;
     badge.classList.toggle('live', st.mode==='live');
     S.rfq = sample.rfq_text;
     render();
   }catch(e){
-    $('#stage').innerHTML = `<div class="flag-box"><div class="panel-cap">⚑ Backend not reachable</div>
-      <ul><li>${esc(e.message)}</li><li>Start it with: <b>cd backend &amp;&amp; uvicorn app:app --port 8000</b></li></ul></div>`;
+    $('#stage').innerHTML = `<div class="flag-box"><div class="panel-cap">${t('err')}</div>
+      <ul><li>${esc(e.message)}</li><li>${t('err_start')} <b>cd backend &amp;&amp; uvicorn app:app --port 8000</b></li></ul></div>`;
   }
 })();
 </script>

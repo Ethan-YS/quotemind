@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 850" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,1.5 L10,5 L0,8.5 z" fill="#111"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="850" fill="#fdfdfb"/>
+  <rect x="25" y="25" width="1150" height="800" fill="none" stroke="#111" stroke-width="2.5"/>
+  <rect x="35" y="35" width="1130" height="780" fill="none" stroke="#111" stroke-width="1"/>
+
+  <!-- ================= Notes ================= -->
+  <g font-size="15" fill="#111">
+    <text x="60" y="75" font-weight="bold">NOTES:</text>
+    <text x="60" y="98">1. Induction harden spline section 54-58 HRC, case depth 1.5-2.5 mm</text>
+    <text x="60" y="121">2. Centre holes DIN 332 - D M8 both ends</text>
+    <text x="60" y="144">3. Undimensioned chamfers 1 x 45&#176;, fillet radii R0.6 max</text>
+    <text x="60" y="167">4. Demagnetize after grinding. Bearing seats ground, Ra 0.4</text>
+  </g>
+
+  <!-- ================= Shaft outline ================= -->
+  <!-- scale 2.8 px/mm, centreline y=430, x from 250 -->
+  <g stroke="#111" stroke-width="2.5" fill="none">
+    <path d="M250,395 H328 V385 H454 V374 H600 V395 H678 V402 H754 V458 H678 V465 H600 V486 H454 V475 H328 V465 H250 Z"/>
+  </g>
+  <!-- section boundaries (light) -->
+  <g stroke="#111" stroke-width="1">
+    <line x1="328" y1="385" x2="328" y2="475"/>
+    <line x1="454" y1="374" x2="454" y2="486"/>
+    <line x1="600" y1="374" x2="600" y2="486"/>
+    <line x1="678" y1="395" x2="678" y2="465"/>
+  </g>
+  <!-- spline hatching hint -->
+  <g stroke="#111" stroke-width="0.8">
+    <line x1="336" y1="385" x2="336" y2="475"/><line x1="348" y1="385" x2="348" y2="475"/>
+    <line x1="360" y1="385" x2="360" y2="475"/><line x1="372" y1="385" x2="372" y2="475"/>
+    <line x1="384" y1="385" x2="384" y2="475"/><line x1="396" y1="385" x2="396" y2="475"/>
+    <line x1="408" y1="385" x2="408" y2="475"/><line x1="420" y1="385" x2="420" y2="475"/>
+    <line x1="432" y1="385" x2="432" y2="475"/><line x1="444" y1="385" x2="444" y2="475"/>
+  </g>
+  <!-- keyway on gear seat -->
+  <rect x="490" y="374" width="72" height="10" fill="none" stroke="#111" stroke-width="1.6"/>
+  <!-- thread hint on right end -->
+  <g stroke="#111" stroke-width="0.9">
+    <line x1="686" y1="399" x2="746" y2="399"/>
+    <line x1="686" y1="461" x2="746" y2="461"/>
+  </g>
+  <!-- centreline -->
+  <line x1="220" y1="430" x2="790" y2="430" stroke="#111" stroke-width="0.8" stroke-dasharray="14,4,3,4"/>
+
+  <!-- ================= Datums ================= -->
+  <g font-size="14" font-weight="bold">
+    <line x1="289" y1="475" x2="289" y2="520" stroke="#111" stroke-width="1"/>
+    <rect x="277" y="520" width="24" height="22" fill="none" stroke="#111" stroke-width="1.4"/>
+    <path d="M283,520 L289,510 L295,520" fill="#111"/>
+    <text x="289" y="537" text-anchor="middle">A</text>
+    <line x1="639" y1="465" x2="639" y2="520" stroke="#111" stroke-width="1"/>
+    <rect x="627" y="520" width="24" height="22" fill="none" stroke="#111" stroke-width="1.4"/>
+    <path d="M633,520 L639,510 L645,520" fill="#111"/>
+    <text x="639" y="537" text-anchor="middle">B</text>
+  </g>
+
+  <!-- runout FCF on gear seat -->
+  <g font-size="14">
+    <line x1="527" y1="374" x2="527" y2="330" stroke="#111" stroke-width="1" marker-start="url(#arr)"/>
+    <rect x="527" y="308" width="156" height="24" fill="none" stroke="#111" stroke-width="1.4"/>
+    <line x1="559" y1="308" x2="559" y2="332" stroke="#111" stroke-width="1.4"/>
+    <line x1="619" y1="308" x2="619" y2="332" stroke="#111" stroke-width="1.4"/>
+    <line x1="651" y1="308" x2="651" y2="332" stroke="#111" stroke-width="1.4"/>
+    <line x1="535" y1="328" x2="549" y2="314" stroke="#111" stroke-width="1.3" marker-end="url(#arr)"/>
+    <text x="564" y="326">0.02</text>
+    <text x="630" y="326" text-anchor="middle">A</text>
+    <text x="667" y="326" text-anchor="middle">B</text>
+  </g>
+
+  <!-- ================= Diameter callouts ================= -->
+  <g font-size="15" fill="#111">
+    <line x1="289" y1="395" x2="255" y2="255" stroke="#111" stroke-width="1" marker-start="url(#arr)"/>
+    <text x="196" y="248">&#216;25 h6</text>
+    <text x="196" y="266" font-size="12">bearing seat</text>
+
+    <line x1="391" y1="385" x2="380" y2="240" stroke="#111" stroke-width="1" marker-start="url(#arr)"/>
+    <text x="330" y="220">Spline DIN 5480</text>
+    <text x="330" y="238">W30 x 1.5 x 18</text>
+
+    <line x1="527" y1="384" x2="540" y2="255" stroke="#111" stroke-width="1" marker-start="url(#arr)"/>
+    <text x="512" y="248">&#216;40 m6</text>
+    <text x="512" y="266" font-size="12">keyway 12 P9 x 5</text>
+
+    <line x1="639" y1="395" x2="672" y2="255" stroke="#111" stroke-width="1" marker-start="url(#arr)"/>
+    <text x="648" y="248">&#216;25 h6</text>
+    <text x="648" y="266" font-size="12">bearing seat</text>
+
+    <line x1="716" y1="402" x2="760" y2="290" stroke="#111" stroke-width="1" marker-start="url(#arr)"/>
+    <text x="748" y="282">M20 x 1.5</text>
+  </g>
+
+  <!-- ================= Length dimensions ================= -->
+  <g font-size="15" fill="#111" stroke-width="1">
+    <!-- overall 180 -->
+    <line x1="250" y1="486" x2="250" y2="618" stroke="#111" stroke-width="0.8"/>
+    <line x1="754" y1="458" x2="754" y2="618" stroke="#111" stroke-width="0.8"/>
+    <line x1="250" y1="608" x2="754" y2="608" stroke="#111" marker-start="url(#arr)" marker-end="url(#arr)"/>
+    <text x="486" y="600">180</text>
+
+    <!-- 28 / 45 / 52 / 28 / 27 -->
+    <line x1="328" y1="475" x2="328" y2="578" stroke="#111" stroke-width="0.8"/>
+    <line x1="454" y1="486" x2="454" y2="578" stroke="#111" stroke-width="0.8"/>
+    <line x1="600" y1="486" x2="600" y2="578" stroke="#111" stroke-width="0.8"/>
+    <line x1="678" y1="465" x2="678" y2="578" stroke="#111" stroke-width="0.8"/>
+    <line x1="250" y1="568" x2="328" y2="568" stroke="#111" marker-start="url(#arr)" marker-end="url(#arr)"/>
+    <text x="278" y="560">28</text>
+    <line x1="328" y1="568" x2="454" y2="568" stroke="#111" marker-start="url(#arr)" marker-end="url(#arr)"/>
+    <text x="380" y="560">45</text>
+    <line x1="454" y1="568" x2="600" y2="568" stroke="#111" marker-start="url(#arr)" marker-end="url(#arr)"/>
+    <text x="516" y="560">52</text>
+    <line x1="600" y1="568" x2="678" y2="568" stroke="#111" marker-start="url(#arr)" marker-end="url(#arr)"/>
+    <text x="628" y="560">28</text>
+    <line x1="678" y1="568" x2="754" y2="568" stroke="#111" marker-start="url(#arr)" marker-end="url(#arr)"/>
+    <text x="705" y="560">27</text>
+  </g>
+
+  <!-- ================= Title block ================= -->
+  <g stroke="#111" fill="none">
+    <rect x="640" y="655" width="525" height="160" stroke-width="2"/>
+    <line x1="640" y1="695" x2="1165" y2="695" stroke-width="1"/>
+    <line x1="640" y1="735" x2="1165" y2="735" stroke-width="1"/>
+    <line x1="640" y1="775" x2="1165" y2="775" stroke-width="1"/>
+    <line x1="900" y1="655" x2="900" y2="775" stroke-width="1"/>
+    <line x1="1030" y1="655" x2="1030" y2="775" stroke-width="1"/>
+  </g>
+  <g font-size="12" fill="#555">
+    <text x="648" y="670">Material</text>
+    <text x="908" y="670">Scale</text>
+    <text x="1038" y="670">Weight</text>
+    <text x="648" y="710">General tolerances</text>
+    <text x="908" y="710">Drawn</text>
+    <text x="1038" y="710">Date</text>
+    <text x="648" y="750">Company</text>
+    <text x="908" y="750">Drawing No.</text>
+    <text x="1038" y="750">Rev.</text>
+  </g>
+  <g font-size="16" fill="#111" font-weight="bold">
+    <text x="648" y="689">42CrMo4 +QT (1.7225)</text>
+    <text x="908" y="689">1:1</text>
+    <text x="1038" y="689">~1.9 kg</text>
+    <text x="648" y="729">ISO 2768 - mK</text>
+    <text x="908" y="729" font-weight="normal">M. Keller</text>
+    <text x="1038" y="729" font-weight="normal">2026-03-12</text>
+    <text x="648" y="768">Nordwind Antriebstechnik GmbH</text>
+    <text x="908" y="768">GS-4032</text>
+    <text x="1038" y="768">B</text>
+  </g>
+  <text x="648" y="802" font-size="18" font-weight="bold" fill="#111">GEAR SHAFT NW-350 CONVEYOR DRIVE</text>
+
+  <!-- third angle projection symbol -->
+  <g stroke="#111" stroke-width="1.2" fill="none">
+    <circle cx="90" cy="770" r="12"/>
+    <circle cx="90" cy="770" r="4"/>
+    <path d="M115,758 L155,758 L155,782 L115,782 z"/>
+    <line x1="122" y1="758" x2="122" y2="782"/>
+  </g>
+  <text x="60" y="812" font-size="11" fill="#555">Projection: first angle (DIN ISO 128)</text>
+</svg>

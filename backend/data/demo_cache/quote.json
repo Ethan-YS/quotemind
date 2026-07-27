@@ -1,0 +1,39 @@
+{
+  "scenarios": [
+    {
+      "qty": 250,
+      "unit_cost_eur": 68.9,
+      "cost_breakdown_eur": { "material": 12.0, "machining": 33.4, "heat_treatment": 6.9, "grinding": 9.6, "overhead": 7.0 },
+      "unit_price_eur": 88.5,
+      "margin_pct": 22
+    },
+    {
+      "qty": 500,
+      "unit_cost_eur": 62.4,
+      "cost_breakdown_eur": { "material": 11.6, "machining": 30.1, "heat_treatment": 6.3, "grinding": 8.7, "overhead": 5.7 },
+      "unit_price_eur": 79.9,
+      "margin_pct": 22
+    }
+  ],
+  "tooling_cost_eur": {
+    "amount": 0,
+    "note": "Spline hob DIN 5480 W30×1.5 already in-house (PM-SH-2214 program) — no tooling invoice. Pending: inductor coil check for IH-01; worst case ~€1,800 one-time (see routing open questions)."
+  },
+  "lead_time": {
+    "first_batch_weeks": 7,
+    "note": "Material 2 wks (stocked grade, peeled bar) + production 4 wks + buffer 1 wk — meets the customer's 8-week requirement."
+  },
+  "assumptions": [
+    "Germany plant: 78 EUR/h machine+labor rate, 12% overhead on manufacturing cost, 22% target margin on selling price",
+    "Lot sizes: 250 single release (scenario 1) / 4 × 125 releases (scenario 2), setups amortized accordingly",
+    "Material at 2026-Q2 index (EUR 2.85/kg + QT/peeling surcharge); price escalation clause recommended beyond 6 months validity",
+    "Costs calibrated against PM-SH-2214 (2025 actuals, €68.4/pc at 300) and PM-SH-1998 (2026 actuals, €63.8/pc at 250) — both cost-transferable references",
+    "Scrap risk for the 0.02 runout requirement estimated at 2% and included in machining cost"
+  ],
+  "risks": [
+    "Rev B change history not provided — quotation explicitly bound to drawing GS-4032 Rev. B",
+    "Single induction-hardening cell (IH-01): capacity check required before order confirmation",
+    "At 500 pcs/yr, Poland transfer offers ~18% conversion-cost saving but adds requalification effort — recommend after first 2 releases"
+  ],
+  "quote_letter_draft": "Dear Mr. Keller,\n\nThank you for your inquiry RFQ 2026-0847. We are pleased to quote the gear shaft GS-4032 Rev. B for your NW-350 conveyor drive series as follows:\n\n  - 250 pcs (initial order):   EUR 88.50 / pc\n  - 500 pcs/yr (4 releases):   EUR 79.90 / pc\n  - Tooling: none — compatible spline tooling is available in-house\n  - Delivery: first batch 7 weeks after order and drawing approval\n  - Included: 3.1 material certificate (EN 10204), 100% runout inspection\n  - Payment: 30 days net; Incoterms: FCA our works (Germany)\n\nPrices are based on drawing GS-4032 Rev. B and the current material index; offer validity 60 days.\n\nMit freundlichen Grüßen / Best regards,\nQuotation Engineering\nPrecisionMotion GmbH"
+}

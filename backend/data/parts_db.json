@@ -1,0 +1,225 @@
+[
+  {
+    "part_no": "PM-SH-2214",
+    "name": "Gear shaft, planetary gearbox PG-220",
+    "family": "gear_shaft",
+    "material": "42CrMo4 +QT",
+    "features": {
+      "max_dia_mm": 42, "length_mm": 195, "bearing_seats": "2x Ø25 h6",
+      "spline": "DIN 5480 W30x1.5x18", "keyway": "12 P9", "thread": "M20x1.5",
+      "hardening": "induction, 54-58 HRC", "tightest_grade": "IT6", "grinding": true
+    },
+    "plant": "Germany", "qty_produced_total": 3200,
+    "last_order": { "year": 2025, "qty": 300, "unit_cost_eur": 68.4 },
+    "cost_breakdown_eur": { "material": 11.2, "machining": 28.6, "heat_treatment": 7.4, "grinding": 9.8, "overhead": 11.4 },
+    "routing_summary": ["saw cut", "CNC turning (2 ops)", "hobbing spline", "keyway milling", "induction hardening", "cylindrical grinding", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "Closest running reference for 25h6 bearing-seat shafts; grinding is the bottleneck operation."
+  },
+  {
+    "part_no": "PM-SH-1876",
+    "name": "Output shaft, worm gearbox WG-90",
+    "family": "gear_shaft",
+    "material": "42CrMo4 +QT",
+    "features": {
+      "max_dia_mm": 38, "length_mm": 168, "bearing_seats": "2x Ø20 h6",
+      "spline": null, "keyway": "10 P9", "thread": "M16x1.5",
+      "hardening": "induction, 52-56 HRC", "tightest_grade": "IT6", "grinding": true
+    },
+    "plant": "Poland", "qty_produced_total": 5400,
+    "last_order": { "year": 2026, "qty": 500, "unit_cost_eur": 47.1 },
+    "cost_breakdown_eur": { "material": 8.1, "machining": 21.3, "heat_treatment": 5.2, "grinding": 6.4, "overhead": 6.1 },
+    "routing_summary": ["saw cut", "CNC turning (2 ops)", "keyway milling", "induction hardening", "cylindrical grinding", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "Poland line has spare grinding capacity at 500 pcs/yr scale."
+  },
+  {
+    "part_no": "PM-SH-2431",
+    "name": "Splined drive shaft, servo actuator SA-45",
+    "family": "gear_shaft",
+    "material": "16MnCr5 (case hardened)",
+    "features": {
+      "max_dia_mm": 30, "length_mm": 140, "bearing_seats": "2x Ø17 h6",
+      "spline": "DIN 5480 W25x1.25x18", "keyway": null, "thread": "M12x1.25",
+      "hardening": "case hardening, 58-62 HRC", "tightest_grade": "IT6", "grinding": true
+    },
+    "plant": "Germany", "qty_produced_total": 12800,
+    "last_order": { "year": 2026, "qty": 1200, "unit_cost_eur": 31.9 },
+    "cost_breakdown_eur": { "material": 4.3, "machining": 13.8, "heat_treatment": 4.9, "grinding": 4.6, "overhead": 4.3 },
+    "routing_summary": ["bar feed CNC turning", "hobbing spline", "case hardening", "cylindrical grinding", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "Different hardening route (case vs induction) — not directly cost-comparable."
+  },
+  {
+    "part_no": "PM-SH-2087",
+    "name": "Pinion shaft, conveyor gearbox CG-300",
+    "family": "gear_shaft",
+    "material": "42CrMo4 +QT",
+    "features": {
+      "max_dia_mm": 45, "length_mm": 210, "bearing_seats": "2x Ø30 h6",
+      "spline": null, "keyway": "14 P9", "thread": null,
+      "hardening": "induction, 54-58 HRC", "tightest_grade": "IT6", "grinding": true,
+      "integral_pinion": "m2.5 z17"
+    },
+    "plant": "Germany", "qty_produced_total": 1850,
+    "last_order": { "year": 2024, "qty": 200, "unit_cost_eur": 94.7 },
+    "cost_breakdown_eur": { "material": 14.6, "machining": 41.2, "heat_treatment": 8.1, "grinding": 13.5, "overhead": 17.3 },
+    "routing_summary": ["saw cut", "CNC turning (2 ops)", "gear hobbing", "keyway milling", "induction hardening", "gear + cylindrical grinding", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "Integral pinion adds hobbing + gear grinding; conveyor application like NW series."
+  },
+  {
+    "part_no": "PM-SH-1650",
+    "name": "Motor shaft, servo motor SM-750",
+    "family": "motor_shaft",
+    "material": "C45E",
+    "features": {
+      "max_dia_mm": 28, "length_mm": 155, "bearing_seats": "2x Ø15 j5",
+      "spline": null, "keyway": "8 N9", "thread": "M10",
+      "hardening": null, "tightest_grade": "IT5", "grinding": true
+    },
+    "plant": "China", "qty_produced_total": 42000,
+    "last_order": { "year": 2026, "qty": 5000, "unit_cost_eur": 12.4 },
+    "cost_breakdown_eur": { "material": 1.9, "machining": 6.2, "heat_treatment": 0.0, "grinding": 2.1, "overhead": 2.2 },
+    "routing_summary": ["bar feed CNC turning", "keyway milling", "cylindrical grinding", "dynamic balancing", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "High-volume line, China plant; j5 seats need temperature-controlled grinding cell."
+  },
+  {
+    "part_no": "PM-SH-2298",
+    "name": "Hollow spindle shaft, rotary actuator RA-120",
+    "family": "gear_shaft",
+    "material": "42CrMo4 +QT",
+    "features": {
+      "max_dia_mm": 55, "length_mm": 120, "bearing_seats": "2x Ø40 h6",
+      "spline": "DIN 5480 W40x2x18", "keyway": null, "thread": null,
+      "hardening": "induction, 54-58 HRC", "tightest_grade": "IT6", "grinding": true,
+      "through_bore": "Ø22 H7"
+    },
+    "plant": "Germany", "qty_produced_total": 950,
+    "last_order": { "year": 2025, "qty": 150, "unit_cost_eur": 112.3 },
+    "cost_breakdown_eur": { "material": 16.8, "machining": 52.4, "heat_treatment": 9.2, "grinding": 14.6, "overhead": 19.3 },
+    "routing_summary": ["saw cut", "CNC turning + deep drilling", "hobbing spline", "induction hardening", "ID + OD grinding", "final inspection"],
+    "quote_outcome": "lost",
+    "notes": "Lost on price 2025 — deep drilling drove cost; competitor quoted hollow bar stock."
+  },
+  {
+    "part_no": "PM-HS-0912",
+    "name": "Gearbox housing, planetary PG-220",
+    "family": "housing",
+    "material": "EN-GJS-400-15 (cast)",
+    "features": {
+      "max_dia_mm": 240, "length_mm": 185, "bearing_seats": "2x Ø72 H7",
+      "spline": null, "keyway": null, "thread": "12x M8 flange",
+      "hardening": null, "tightest_grade": "IT7", "grinding": false
+    },
+    "plant": "Poland", "qty_produced_total": 3100,
+    "last_order": { "year": 2026, "qty": 300, "unit_cost_eur": 87.5 },
+    "cost_breakdown_eur": { "material": 22.0, "machining": 38.5, "heat_treatment": 0.0, "grinding": 0.0, "overhead": 27.0 },
+    "routing_summary": ["casting (purchased)", "5-axis milling (2 setups)", "boring bearing seats", "leak test", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "Casting lead time 6 weeks dominates; not shaft-comparable."
+  },
+  {
+    "part_no": "PM-GR-1544",
+    "name": "Helical gear, m2 z43, conveyor gearbox CG-300",
+    "family": "gear",
+    "material": "20MnCr5 (case hardened)",
+    "features": {
+      "max_dia_mm": 92, "length_mm": 35, "bearing_seats": null,
+      "spline": null, "keyway": "14 P9 bore", "thread": null,
+      "hardening": "case hardening, 58-62 HRC", "tightest_grade": "gear quality Q7", "grinding": true
+    },
+    "plant": "Germany", "qty_produced_total": 2600,
+    "last_order": { "year": 2025, "qty": 250, "unit_cost_eur": 41.8 },
+    "cost_breakdown_eur": { "material": 5.4, "machining": 17.6, "heat_treatment": 6.1, "grinding": 7.2, "overhead": 5.5 },
+    "routing_summary": ["blank turning", "gear hobbing", "case hardening", "gear grinding", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "Mating gear family for CG/NW conveyor drives."
+  },
+  {
+    "part_no": "PM-SH-2510",
+    "name": "Stepped shaft, linear actuator LA-200 ballscrew",
+    "family": "gear_shaft",
+    "material": "C45E +QT",
+    "features": {
+      "max_dia_mm": 32, "length_mm": 175, "bearing_seats": "2x Ø20 h6",
+      "spline": null, "keyway": "8 N9", "thread": "M20x1.5",
+      "hardening": null, "tightest_grade": "IT6", "grinding": true
+    },
+    "plant": "Poland", "qty_produced_total": 7800,
+    "last_order": { "year": 2026, "qty": 800, "unit_cost_eur": 28.6 },
+    "cost_breakdown_eur": { "material": 4.2, "machining": 14.1, "heat_treatment": 1.8, "grinding": 4.0, "overhead": 4.5 },
+    "routing_summary": ["saw cut", "CNC turning (2 ops)", "keyway milling", "stress relieving", "cylindrical grinding", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "No hardening — cheaper route; geometry similar to GS-class shafts."
+  },
+  {
+    "part_no": "PM-SH-1998",
+    "name": "Intermediate shaft, gearbox IG-150",
+    "family": "gear_shaft",
+    "material": "42CrMo4 +QT",
+    "features": {
+      "max_dia_mm": 40, "length_mm": 185, "bearing_seats": "2x Ø25 h6",
+      "spline": "DIN 5480 W28x1.5x16", "keyway": "12 P9", "thread": null,
+      "hardening": "induction, 54-58 HRC", "tightest_grade": "IT6", "grinding": true
+    },
+    "plant": "Germany", "qty_produced_total": 2100,
+    "last_order": { "year": 2026, "qty": 250, "unit_cost_eur": 63.8 },
+    "cost_breakdown_eur": { "material": 10.4, "machining": 26.9, "heat_treatment": 7.0, "grinding": 9.1, "overhead": 10.4 },
+    "routing_summary": ["saw cut", "CNC turning (2 ops)", "hobbing spline", "keyway milling", "induction hardening", "cylindrical grinding", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "2026 cost basis — freshest comparable for 42CrMo4 splined shafts."
+  },
+  {
+    "part_no": "PM-AC-0788",
+    "name": "Actuator piston rod, IA-80",
+    "family": "rod",
+    "material": "X5CrNi18-10 (stainless)",
+    "features": {
+      "max_dia_mm": 25, "length_mm": 320, "bearing_seats": null,
+      "spline": null, "keyway": null, "thread": "M16x1.5 both ends",
+      "hardening": "hard chrome plated", "tightest_grade": "IT7", "grinding": true
+    },
+    "plant": "China", "qty_produced_total": 15600,
+    "last_order": { "year": 2025, "qty": 2000, "unit_cost_eur": 19.7 },
+    "cost_breakdown_eur": { "material": 5.1, "machining": 7.4, "heat_treatment": 2.8, "grinding": 2.2, "overhead": 2.2 },
+    "routing_summary": ["bar feed CNC turning", "thread rolling", "hard chrome plating (outsourced)", "polishing", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "Outsourced plating adds 2 weeks lead time."
+  },
+  {
+    "part_no": "PM-SH-2350",
+    "name": "Gear shaft, conveyor drive NW-250 (OEM Nordwind)",
+    "family": "gear_shaft",
+    "material": "42CrMo4 +QT",
+    "features": {
+      "max_dia_mm": 36, "length_mm": 165, "bearing_seats": "2x Ø22 h6",
+      "spline": "DIN 5480 W26x1.5x16", "keyway": "10 P9", "thread": "M18x1.5",
+      "hardening": "induction, 54-58 HRC", "tightest_grade": "IT6", "grinding": true
+    },
+    "plant": "Germany", "qty_produced_total": 1400,
+    "last_order": { "year": 2025, "qty": 350, "unit_cost_eur": 58.9 },
+    "cost_breakdown_eur": { "material": 9.2, "machining": 24.8, "heat_treatment": 6.6, "grinding": 8.3, "overhead": 10.0 },
+    "routing_summary": ["saw cut", "CNC turning (2 ops)", "hobbing spline", "keyway milling", "induction hardening", "cylindrical grinding", "final inspection"],
+    "quote_outcome": "won",
+    "notes": "Same customer (Nordwind), predecessor NW-250 series — strong commercial reference."
+  },
+  {
+    "part_no": "PM-SH-1722",
+    "name": "Titanium test shaft, aerospace prototype (one-off)",
+    "family": "gear_shaft",
+    "material": "Ti6Al4V",
+    "features": {
+      "max_dia_mm": 40, "length_mm": 180, "bearing_seats": "2x Ø25 h5",
+      "spline": null, "keyway": "12 P9", "thread": "M20x1.5",
+      "hardening": null, "tightest_grade": "IT5", "grinding": true
+    },
+    "plant": "Germany", "qty_produced_total": 12,
+    "last_order": { "year": 2023, "qty": 12, "unit_cost_eur": 840.0 },
+    "cost_breakdown_eur": { "material": 210.0, "machining": 420.0, "heat_treatment": 0.0, "grinding": 95.0, "overhead": 115.0 },
+    "routing_summary": ["saw cut", "CNC turning (low speed)", "keyway milling", "cylindrical grinding", "CMM full report"],
+    "quote_outcome": "won",
+    "notes": "Geometry near-identical to GS-4032 but exotic material — cost NOT transferable. Good retrieval trap example."
+  }
+]

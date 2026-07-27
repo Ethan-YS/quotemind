@@ -1,0 +1,37 @@
+{
+  "part_name": "Gear shaft NW-350 conveyor drive",
+  "drawing_no": "GS-4032",
+  "revision": "B",
+  "customer": "Nordwind Antriebstechnik GmbH",
+  "quantities": [250, 500],
+  "material": "42CrMo4 +QT (1.7225)",
+  "general_tolerances": "ISO 2768-mK",
+  "part_type": "gear_shaft",
+  "max_dia_mm": 40,
+  "length_mm": 180,
+  "features": [
+    { "feature": "Bearing seat (left, datum A)", "spec": "Ø25 h6 × 28 mm, ground Ra 0.4", "manufacturing_implication": "cylindrical grinding required; IT6 grade" },
+    { "feature": "Spline section", "spec": "DIN 5480 W30 × 1.5 × 18, length 45 mm", "manufacturing_implication": "hobbing; induction hardened 54-58 HRC, case depth 1.5-2.5 mm" },
+    { "feature": "Gear seat", "spec": "Ø40 m6 × 52 mm, keyway 12 P9 × 5", "manufacturing_implication": "interference-fit seat, ground; keyway milling" },
+    { "feature": "Bearing seat (right, datum B)", "spec": "Ø25 h6 × 28 mm, ground Ra 0.4", "manufacturing_implication": "cylindrical grinding required" },
+    { "feature": "Threaded end", "spec": "M20 × 1.5 × 27 mm", "manufacturing_implication": "single-point threading on CNC lathe" },
+    { "feature": "Centre holes", "spec": "DIN 332-D M8 both ends", "manufacturing_implication": "enables between-centres grinding for runout requirement" }
+  ],
+  "critical_requirements": [
+    "Total runout 0.02 mm to datums A–B on gear seat",
+    "Induction hardening 54-58 HRC limited to spline section, case depth 1.5-2.5 mm",
+    "Bearing seats ground, Ra 0.4",
+    "3.1 material certificate per EN 10204",
+    "Demagnetize after grinding"
+  ],
+  "field_confidence": {
+    "material": "high", "max_dia_mm": "high", "length_mm": "high",
+    "quantities": "high", "spline": "high", "runout": "high",
+    "keyway_depth": "medium", "hardening_case_depth": "medium"
+  },
+  "review_flags": [
+    "Revision B — change history not attached; confirm what changed vs Rev A before quoting",
+    "Keyway depth read as 5 mm from '12 P9 × 5' — confirm against CAD model",
+    "Ø40 seat tolerance read as m6 — verify against title block print quality"
+  ]
+}

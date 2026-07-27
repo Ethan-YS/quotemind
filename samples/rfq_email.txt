@@ -1,0 +1,30 @@
+From: m.keller@nordwind-antriebstechnik.de
+To: sales@precisionmotion.de
+Subject: RFQ 2026-0847 — Custom gear shaft, 250 + 500 pcs/yr
+Date: Mon, 27 Jul 2026 09:14:00 +0200
+Attachments: GS-4032_RevB.pdf
+
+Dear PrecisionMotion team,
+
+we are looking for a supplier for a custom gear shaft used in our NW-350
+conveyor drive series. Please find the drawing attached (GS-4032, Rev. B).
+
+Key requirements:
+
+  - Quantity:       250 pcs initial order, approx. 500 pcs/year afterwards
+  - Material:       42CrMo4 +QT (per drawing)
+  - Critical:       bearing seats Ø25 h6, runout 0.02 A-B as specified
+  - Surface:        induction hardened spline section, 54-58 HRC
+  - Delivery:       first batch 8 weeks after order
+  - Certificates:   3.1 material certificate per EN 10204
+
+Please quote unit price for both quantity scenarios, tooling costs if any,
+and your standard payment terms. We would appreciate your offer by end of
+next week.
+
+Mit freundlichen Grüßen / Best regards,
+
+Dipl.-Ing. Martin Keller
+Strategic Purchasing
+Nordwind Antriebstechnik GmbH
+Bremerhavener Str. 44, 27568 Bremerhaven

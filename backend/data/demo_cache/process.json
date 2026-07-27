@@ -1,0 +1,24 @@
+{
+  "routing": [
+    { "op": 10, "operation": "Saw cut bar to length 190 mm", "workcenter": "SAW-02", "setup_min": 15, "cycle_min_per_pc": 0.8, "basis": "PM-SH-2214", "confidence": "high" },
+    { "op": 20, "operation": "CNC turning op 1 (chuck side) + centre holes DIN 332-D M8", "workcenter": "CNC-T12", "setup_min": 45, "cycle_min_per_pc": 6.5, "basis": "PM-SH-1998 (same diameter class)", "confidence": "high" },
+    { "op": 30, "operation": "CNC turning op 2 (finish contour + thread M20×1.5)", "workcenter": "CNC-T12", "setup_min": 30, "cycle_min_per_pc": 5.8, "basis": "PM-SH-1998", "confidence": "high" },
+    { "op": 40, "operation": "Spline hobbing DIN 5480 W30×1.5×18", "workcenter": "HOB-03", "setup_min": 60, "cycle_min_per_pc": 4.2, "basis": "PM-SH-2214 (identical spline, same hob)", "confidence": "high" },
+    { "op": 50, "operation": "Keyway milling 12 P9 × 5", "workcenter": "MILL-07", "setup_min": 20, "cycle_min_per_pc": 2.1, "basis": "PM-SH-1998", "confidence": "high" },
+    { "op": 60, "operation": "Induction hardening spline section 54-58 HRC", "workcenter": "IH-01", "setup_min": 40, "cycle_min_per_pc": 1.6, "basis": "PM-SH-2214", "confidence": "medium" },
+    { "op": 70, "operation": "Cylindrical grinding 2× Ø25 h6 + Ø40 m6, between centres", "workcenter": "GRD-05", "setup_min": 50, "cycle_min_per_pc": 7.4, "basis": "PM-SH-2214 (2 seats) + 25% for third ground seat", "confidence": "medium" },
+    { "op": 80, "operation": "Demagnetize, final inspection, 100% runout check A–B", "workcenter": "QA-01", "setup_min": 10, "cycle_min_per_pc": 2.5, "basis": "runout 0.02 requires 100% check", "confidence": "high" }
+  ],
+  "recommended_plant": {
+    "plant": "Germany",
+    "why": "Identical spline hob (W30×1.5, from PM-SH-2214) and induction hardening in-house; customer proximity for first-article approval. Re-evaluate Poland transfer at the 500 pcs/yr scenario — grinding capacity is available there (PM-SH-1876 line) at ~18% lower conversion cost."
+  },
+  "critical_ops_notes": [
+    "GRD-05 is the bottleneck (7.4 min/pc); runout 0.02 A–B demands between-centres grinding of all three seats in one clamping",
+    "Grind AFTER induction hardening; keep hardened zone clear of the Ø40 m6 shoulder to avoid grinding burns",
+    "Total machine time ≈ 30.9 min/pc, plus setups amortized over the release lot"
+  ],
+  "open_questions": [
+    "Confirm IH-01 inductor coil fits the 45 mm spline section — geometry differs slightly from PM-SH-2214; worst case a new coil (~€1,800, 3 wks)"
+  ]
+}

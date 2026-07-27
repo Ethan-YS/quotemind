@@ -1,0 +1,20 @@
+{
+  "bom_lines": [
+    { "pos": 1, "item": "Round bar 42CrMo4 +QT, peeled", "spec": "EN 10083-3, Ø45 × 190 mm", "qty": 1, "unit": "pc", "est_unit_cost_eur": 10.6, "basis": "PM-SH-1998 material cost (2026) scaled by gross weight" },
+    { "pos": 2, "item": "Induction hardening", "spec": "spline section, 54-58 HRC, depth 1.5-2.5 mm", "qty": 1, "unit": "op", "est_unit_cost_eur": 7.0, "basis": "PM-SH-2214 / PM-SH-1998 heat-treatment actuals" },
+    { "pos": 3, "item": "3.1 material certificate", "spec": "EN 10204, per heat lot", "qty": 1, "unit": "pc", "est_unit_cost_eur": 0.8, "basis": "mill cert surcharge amortized over 250-pc lot" },
+    { "pos": 4, "item": "Corrosion protection + packaging", "spec": "VCI paper, cardboard separators", "qty": 1, "unit": "pc", "est_unit_cost_eur": 0.6, "basis": "standard shaft packaging rule" }
+  ],
+  "raw_material": {
+    "spec": "42CrMo4 +QT (1.7225), EN 10083-3",
+    "stock_size": "Ø45 × 190 mm",
+    "gross_weight_kg": 2.37,
+    "net_weight_kg": 1.9,
+    "scrap_note": "~0.47 kg turnings; grinding allowance 0.3 mm/side on ground seats"
+  },
+  "open_questions": [
+    "Ø42 bar stock possible instead of Ø45 if straightness spec of peeled bar allows — would save ~€1.1/pc material",
+    "Customer certificate requirement: per batch or per heat lot? Quoted per heat lot.",
+    "Titanium reference PM-SH-1722 matched on geometry only — excluded from all cost lines (exotic material, cost not transferable)"
+  ]
+}

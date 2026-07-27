@@ -47,7 +47,7 @@ backend/
     process_agent.py      # ④ 工艺路线草稿
     quote_agent.py        # ⑤ 成本汇总 + 报价书
   data/
-    parts_db.json         # 12 个历史零件（含成本/工艺实绩）
+    parts_db.json         # 13 个历史零件（含成本/工艺实绩）
     demo_cache/           # demo mode 回放的流水线输出
 frontend/                 # 审核工作台（英文 UI）
 samples/                  # 样例 RFQ + 工程图纸
@@ -57,6 +57,6 @@ docs/solution-design.md   # Part 1-5 完整方案设计
 ## 已知边界（原型的诚实清单）
 
 - 图纸理解只处理单张单视图图纸；多页 PDF / 装配图 / 手绘扫描件是生产版工程
-- 零件库 12 条为手工构造的演示数据；生产版从 PLM/ERP 同步并做混合检索
+- 零件库 13 条为手工构造的演示数据；生产版从 PLM/ERP 同步并做混合检索
 - 成本费率与假设硬编码在 prompt 中；生产版从 ERP 主数据读取
 - 无鉴权、无并发控制——这是一个 challenge 原型，不是产品

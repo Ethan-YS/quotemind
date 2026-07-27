@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "quotemind",
+      "runtimeExecutable": "/Users/yisang/Program file/💻 开发项目/quotemind/.venv/bin/uvicorn",
+      "runtimeArgs": ["app:app", "--port", "8123", "--app-dir", "/Users/yisang/Program file/💻 开发项目/quotemind/backend"],
+      "port": 8123
+    }
+  ]
+}

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuoteMind — RFQ Review Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f4ee; --paper-2:#efece2; --ink:#191813; --line:#b9b3a0; --line-soft:#d8d3c4;
+  --blue:#1e50b3; --blue-soft:#e8edf8; --red:#a92419; --red-soft:#f8ebe8;
+  --green:#2f6b3a; --amber:#9a6b0a;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --sans:'Archivo',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#dedacd}
+body{
+  font-family:var(--sans);color:var(--ink);background:var(--paper);
+  max-width:1240px;margin:18px auto;border:2px solid var(--ink);
+  box-shadow:0 2px 0 var(--ink), 8px 10px 0 rgba(25,24,19,.12);
+  min-height:calc(100vh - 36px);display:flex;flex-direction:column;
+  background-image:radial-gradient(rgba(25,24,19,.028) 1px,transparent 1px);
+  background-size:22px 22px;
+}
+/* ============ title block header ============ */
+header{display:grid;grid-template-columns:1fr auto auto auto;border-bottom:2px solid var(--ink)}
+header>div{padding:14px 18px;border-right:1px solid var(--ink)}
+header>div:last-child{border-right:none}
+.brand h1{font-weight:800;font-size:26px;letter-spacing:.5px;font-stretch:80%;text-transform:uppercase}
+.brand h1 span{color:var(--blue)}
+.brand p{font-family:var(--mono);font-size:11px;color:#5b5748;margin-top:2px}
+.tb-label{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:#7a7562}
+.tb-value{font-family:var(--mono);font-size:14px;font-weight:600;margin-top:4px;white-space:nowrap}
+#modeBadge .tb-value{color:var(--red)}
+#modeBadge .tb-value.live{color:var(--green)}
+/* ink legend */
+.legend{display:flex;gap:18px;align-items:center;border-bottom:1px solid var(--ink);padding:7px 18px;background:var(--paper-2)}
+.legend b{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#7a7562;font-weight:500}
+.legend span{font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border:1px solid var(--ink);display:inline-block}
+.dot.b{background:var(--blue);border-color:var(--blue)}
+.dot.k{background:var(--ink)}
+.dot.r{background:var(--red);border-color:var(--red)}
+/* ============ layout ============ */
+main{display:grid;grid-template-columns:212px 1fr;flex:1}
+/* ---- op rail ---- */
+nav{border-right:2px solid var(--ink);padding:22px 0;background:var(--paper-2)}
+.op{display:grid;grid-template-columns:52px 1fr;align-items:center;padding:11px 14px 11px 18px;
+    cursor:default;position:relative;opacity:.42;transition:opacity .25s}
+.op.reachable{opacity:1;cursor:pointer}
+.op.active{background:var(--paper);box-shadow:inset 4px 0 0 var(--blue)}
+.op-num{font-family:var(--mono);font-size:17px;font-weight:600}
+.op-name{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;line-height:1.25}
+.op-sub{font-family:var(--mono);font-size:9.5px;color:#7a7562;margin-top:1px}
+.op .tick{position:absolute;right:12px;top:50%;transform:translateY(-50%) rotate(-8deg);
+  font-family:var(--mono);font-size:8.5px;font-weight:600;color:var(--red);border:1.5px solid var(--red);
+  padding:1px 4px;border-radius:2px;display:none;letter-spacing:.08em}
+.op.done .tick{display:block}
+nav .rail-note{margin:26px 18px 0;padding-top:14px;border-top:1px dashed var(--line);
+  font-family:var(--mono);font-size:9.5px;line-height:1.7;color:#7a7562}
+/* ---- stage area ---- */
+#stage{padding:26px 30px 44px;overflow-x:hidden}
+.stage-head{display:flex;align-items:baseline;gap:14px;margin-bottom:4px}
+.stage-head h2{font-size:21px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-stretch:85%}
+.stage-head .mono{font-family:var(--mono);font-size:11px;color:#7a7562}
+.stage-desc{font-size:13px;color:#4c483a;margin-bottom:20px;max-width:70ch}
+/* generic blocks */
+.panel{border:1.5px solid var(--ink);background:#fffdf8;margin-bottom:18px;animation:rise .4s both}
+.panel:nth-of-type(2){animation-delay:.06s}.panel:nth-of-type(3){animation-delay:.12s}
+.panel:nth-of-type(4){animation-delay:.18s}.panel:nth-of-type(5){animation-delay:.24s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.panel-cap{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  padding:7px 12px;border-bottom:1px solid var(--line-soft);color:#5b5748;display:flex;justify-content:space-between;align-items:center}
+.panel-body{padding:14px 16px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#7a7562;
+   text-align:left;padding:6px 10px;border-bottom:1.5px solid var(--ink);font-weight:500}
+td{padding:7px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+td.mono{font-family:var(--mono);font-size:12px}
+.ai{color:var(--blue)}                       /* AI-draft ink */
+[contenteditable]{outline:none;border-bottom:1px dashed transparent}
+[contenteditable]:hover{border-bottom-color:var(--blue)}
+[contenteditable]:focus{background:var(--blue-soft);border-bottom-color:var(--blue)}
+.chip{font-family:var(--mono);font-size:9px;letter-spacing:.08em;border:1px solid;padding:1px 5px;border-radius:2px;white-space:nowrap}
+.chip.high{color:var(--green);border-color:var(--green)}
+.chip.medium{color:var(--amber);border-color:var(--amber)}
+.chip.low{color:var(--red);border-color:var(--red)}
+.flag-box{border:1.5px dashed var(--red);background:var(--red-soft);padding:12px 16px;margin-bottom:18px}
+.flag-box .panel-cap{border:none;padding:0 0 6px;color:var(--red)}
+.flag-box li{font-size:12.5px;margin-left:18px;padding:2px 0;color:#6b1710}
+.note-list li{font-size:12.5px;margin-left:18px;padding:2px 0;color:#4c483a}
+/* approve bar */
+.approve{display:flex;align-items:center;gap:16px;margin-top:24px;padding-top:18px;border-top:2px solid var(--ink)}
+.stamp-btn{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  background:var(--ink);color:var(--paper);border:2px solid var(--ink);padding:12px 26px;cursor:pointer;
+  transition:transform .08s, background .2s}
+.stamp-btn:hover{background:var(--blue);border-color:var(--blue)}
+.stamp-btn:active{transform:scale(.96)}
+.stamp-btn:disabled{opacity:.4;cursor:wait}
+.approve .hint{font-family:var(--mono);font-size:10.5px;color:#7a7562;max-width:52ch;line-height:1.6}
+/* rubber stamp */
+.stamp{position:fixed;pointer-events:none;font-family:var(--mono);font-weight:600;color:var(--red);
+  border:3px solid var(--red);padding:6px 14px;font-size:20px;letter-spacing:.18em;border-radius:3px;
+  transform:rotate(-12deg) scale(3);opacity:0;z-index:50}
+.stamp.play{animation:slam .5s cubic-bezier(.2,1.6,.35,1) both}
+@keyframes slam{to{opacity:.88;transform:rotate(-12deg) scale(1)}}
+/* loading */
+.loading{border:1.5px solid var(--ink);background:#fffdf8;padding:34px;text-align:center;margin:30px 0}
+.loading .scan{font-family:var(--mono);font-size:13px;letter-spacing:.06em}
+.loading .scan::after{content:"▌";animation:blink .8s steps(1) infinite;color:var(--blue)}
+@keyframes blink{50%{opacity:0}}
+.loading .bar{height:3px;background:var(--line-soft);margin:18px auto 0;max-width:340px;position:relative;overflow:hidden}
+.loading .bar i{position:absolute;inset:0;width:38%;background:var(--blue);animation:sweep 1.1s ease-in-out infinite alternate}
+@keyframes sweep{to{transform:translateX(165%)}}
+/* intake layout */
+.intake{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.rfq-pre{font-family:var(--mono);font-size:11.5px;line-height:1.65;white-space:pre-wrap;padding:14px 16px;max-height:430px;overflow:auto}
+.drawing-frame img{width:100%;display:block;background:#fff}
+/* retrieval cards */
+.match{display:grid;grid-template-columns:64px 1fr auto;gap:14px;padding:12px 14px;border-bottom:1px solid var(--line-soft);align-items:start}
+.match:last-child{border-bottom:none}
+.score{font-family:var(--mono);font-size:21px;font-weight:600;color:var(--blue)}
+.score small{font-size:9px;display:block;color:#7a7562;font-weight:400;letter-spacing:.1em}
+.match h4{font-size:13px;font-weight:700}
+.match .pn{font-family:var(--mono);font-size:10.5px;color:#7a7562}
+.match .reasons{font-size:11.5px;color:#4c483a;margin-top:4px;line-height:1.55}
+.match .cost{font-family:var(--mono);font-size:11px;text-align:right;line-height:1.7;white-space:nowrap}
+.transfer{font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:1px 5px;border:1px solid var(--green);color:var(--green);border-radius:2px}
+.transfer.no{border-color:var(--red);color:var(--red)}
+/* quote */
+.scenarios{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.scn{border:1.5px solid var(--ink);background:#fffdf8;padding:16px 18px;animation:rise .4s both}
+.scn .qty{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#7a7562}
+.scn .price{font-size:34px;font-weight:800;font-stretch:85%;margin:6px 0 2px;color:var(--blue)}
+.scn .price small{font-size:13px;font-weight:500;color:#4c483a}
+.scn .cost-line{font-family:var(--mono);font-size:11px;color:#4c483a;margin-bottom:10px}
+.stackbar{display:flex;height:14px;border:1px solid var(--ink);margin-bottom:8px}
+.stackbar i{display:block;height:100%}
+.sb-legend{display:flex;flex-wrap:wrap;gap:10px;font-family:var(--mono);font-size:9.5px;color:#4c483a}
+.sb-legend em{font-style:normal;display:flex;align-items:center;gap:4px}
+.sb-legend .dot{width:8px;height:8px;border:none}
+.letter{font-family:var(--mono);font-size:12px;line-height:1.7;white-space:pre-wrap;padding:18px 20px;background:#fffdf8}
+footer{border-top:2px solid var(--ink);padding:10px 18px;display:flex;justify-content:space-between;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:#7a7562;text-transform:uppercase}
+@media (max-width:900px){main{grid-template-columns:1fr}nav{display:flex;overflow-x:auto;border-right:none;border-bottom:2px solid var(--ink);padding:0}.op{min-width:150px}.intake,.scenarios{grid-template-columns:1fr}header{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Quote<span>Mind</span></h1>
+    <p>AI RFQ → Quotation pipeline · human-in-the-loop workbench</p>
+  </div>
+  <div><div class="tb-label">RFQ Ref.</div><div class="tb-value">2026-0847</div></div>
+  <div><div class="tb-label">Part</div><div class="tb-value">GS-4032 Rev. B</div></div>
+  <div id="modeBadge"><div class="tb-label">Mode</div><div class="tb-value">…</div></div>
+</header>
+
+<div class="legend">
+  <b>Ink legend</b>
+  <span><i class="dot k"></i> source fact</span>
+  <span><i class="dot b"></i> AI draft — editable, engineer signs off</span>
+  <span><i class="dot r"></i> flags &amp; approvals</span>
+</div>
+
+<main>
+  <nav id="rail"></nav>
+  <section id="stage"></section>
+</main>
+
+<footer>
+  <span>PrecisionMotion GmbH — quotation engineering</span>
+  <span>QuoteMind prototype · IndustrialMind.ai solution design challenge</span>
+</footer>
+
+<script>
+/* ================= state & helpers ================= */
+const S = { rfq:null, card:null, matches:null, bom:null, routing:null, quote:null };
+let current = 0, done = -1;   // done = highest approved stage index
+
+const OPS = [
+  {op:'10', name:'RFQ Intake',      sub:'source documents'},
+  {op:'20', name:'Drawing Review',  sub:'feature card'},
+  {op:'30', name:'Similar Parts',   sub:'history retrieval'},
+  {op:'40', name:'BOM & Routing',   sub:'drafts'},
+  {op:'50', name:'Quotation',       sub:'cost & letter'},
+];
+
+const $ = sel => document.querySelector(sel);
+const el = (tag, cls, html) => { const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; };
+const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function getPath(obj, path){ return path.split('.').reduce((o,k)=>o?.[k.match(/^\d+$/)?+k:k], obj); }
+function setPath(obj, path, val){
+  const keys = path.split('.'); const last = keys.pop();
+  const target = keys.reduce((o,k)=>o?.[k.match(/^\d+$/)?+k:k], obj);
+  if(target) target[last.match(/^\d+$/)?+last:last] = val;
+}
+/* editable cell bound to state path; numeric paths parse back to number */
+function ed(root, path, cls=''){
+  const v = getPath(S, path);
+  const isNum = typeof v === 'number';
+  return `<span class="ai ${cls}" contenteditable="true" data-path="${path}" data-num="${isNum}">${esc(v)}</span>`;
+}
+document.addEventListener('blur', e=>{
+  const t = e.target;
+  if(!t.dataset?.path) return;
+  const raw = t.innerText.trim();
+  setPath(S, t.dataset.path, t.dataset.num==='true' && !isNaN(parseFloat(raw)) ? parseFloat(raw) : raw);
+}, true);
+
+async function api(path, body){
+  const r = await fetch('/api'+path, body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {});
+  if(!r.ok) throw new Error(path+' → HTTP '+r.status);
+  return r.json();
+}
+const wait = ms => new Promise(r=>setTimeout(r,ms));
+
+/* ================= rail ================= */
+function renderRail(){
+  const rail = $('#rail'); rail.innerHTML='';
+  OPS.forEach((o,i)=>{
+    const d = el('div','op'+(i===current?' active':'')+(i<=done?' done':'')+(i<=done+1?' reachable':''));
+    d.innerHTML = `<div class="op-num">${o.op}</div>
+      <div><div class="op-name">${o.name}</div><div class="op-sub">${o.sub}</div></div>
+      <span class="tick">REVIEWED</span>`;
+    if(i<=done+1) d.onclick = ()=>{ current=i; render(); };
+    rail.appendChild(d);
+  });
+  rail.appendChild(el('div','rail-note',
+    'Every stage is a gate: the next stage runs on the <span style="color:var(--blue)">reviewed</span> output, not the raw AI draft.'));
+}
+
+/* ================= stamp animation ================= */
+function slamStamp(btn){
+  const r = btn.getBoundingClientRect();
+  const st = el('div','stamp','REVIEWED');
+  st.style.left = (r.right+18)+'px'; st.style.top = (r.top-6)+'px';
+  document.body.appendChild(st);
+  requestAnimationFrame(()=>st.classList.add('play'));
+  setTimeout(()=>st.remove(), 900);
+}
+
+function approveBar(hint, onNext){
+  const bar = el('div','approve');
+  const btn = el('button','stamp-btn','Approve — release to next op');
+  btn.onclick = async ()=>{ btn.disabled=true; slamStamp(btn); await wait(450); await onNext(); };
+  bar.appendChild(btn);
+  bar.appendChild(el('div','hint',hint));
+  return bar;
+}
+
+function loadingView(msg){
+  const stage=$('#stage'); stage.innerHTML='';
+  const box = el('div','loading');
+  box.appendChild(el('div','scan',esc(msg)));
+  box.appendChild(el('div','bar','<i></i>'));
+  stage.appendChild(box);
+}
+
+/* ================= stage renderers ================= */
+function stageHead(title, opNo, desc){
+  return `<div class="stage-head"><h2>${title}</h2><span class="mono">OP ${opNo} / 50</span></div>
+          <p class="stage-desc">${desc}</p>`;
+}
+
+function render(){ renderRail(); [rIntake,rCard,rMatches,rBomRouting,rQuote][current](); window.scrollTo({top:0}); }
+
+/* ---- OP10 intake ---- */
+function rIntake(){
+  const stage=$('#stage');
+  stage.innerHTML = stageHead('RFQ Intake','10',
+    'Incoming customer inquiry with attached engineering drawing. Source documents — black ink. Nothing here was generated.');
+  const g = el('div','intake');
+  const p1 = el('div','panel'); p1.innerHTML =
+    `<div class="panel-cap"><span>Customer e-mail</span><span>rfq_email.txt</span></div><pre class="rfq-pre">${esc(S.rfq)}</pre>`;
+  const p2 = el('div','panel drawing-frame'); p2.innerHTML =
+    `<div class="panel-cap"><span>Attachment — engineering drawing</span><span>GS-4032_RevB</span></div><img src="/samples/GS-4032_RevB.svg" alt="drawing">`;
+  g.append(p1,p2); stage.appendChild(g);
+  stage.appendChild(approveBar('Confirms the intake is complete and legible. OP 20 sends the drawing to the vision model and extracts a structured feature card.',
+    async ()=>{
+      loadingView('Reading drawing GS-4032 Rev. B — extracting features, tolerances, critical requirements');
+      const t0=Date.now();
+      S.card = await api('/stage/drawing',{rfq_text:S.rfq});
+      await wait(Math.max(0, 1400-(Date.now()-t0)));
+      done=0; current=1; render();
+    }));
+}
+
+/* ---- OP20 feature card ---- */
+function rCard(){
+  const c=S.card, stage=$('#stage');
+  stage.innerHTML = stageHead('Drawing Review','20',
+    'AI-extracted part feature card. Blue values are drafts — click any of them to correct; your corrections feed every later stage. Confidence chips route attention.');
+  const conf = f => { const lv=c.field_confidence?.[f]; return lv?`<span class="chip ${lv}">${lv[0].toUpperCase()}</span>`:''; };
+
+  const idw = el('div','panel'); idw.innerHTML = `<div class="panel-cap"><span>Identification</span></div>
+    <div class="panel-body"><table><tbody>
+      <tr><th style="width:32%">Part</th><td>${ed(0,'card.part_name')}</td><th style="width:14%">Drawing</th><td class="mono">${esc(c.drawing_no)} Rev. ${esc(c.revision)}</td></tr>
+      <tr><th>Customer</th><td>${esc(c.customer)}</td><th>Quantities</th><td class="mono">${ed(0,'card.quantities.0')} + ${ed(0,'card.quantities.1')}/yr ${conf('quantities')}</td></tr>
+      <tr><th>Material</th><td>${ed(0,'card.material')} ${conf('material')}</td><th>Gen. tol.</th><td class="mono">${esc(c.general_tolerances)}</td></tr>
+      <tr><th>Envelope</th><td class="mono">Ø${ed(0,'card.max_dia_mm')} × ${ed(0,'card.length_mm')} mm ${conf('max_dia_mm')}</td><th>Type</th><td class="mono">${esc(c.part_type)}</td></tr>
+    </tbody></table></div>`;
+  stage.appendChild(idw);
+
+  const ft = el('div','panel');
+  ft.innerHTML = `<div class="panel-cap"><span>Extracted features</span><span>${c.features.length} items</span></div>
+    <div class="panel-body"><table><thead><tr><th style="width:24%">Feature</th><th style="width:36%">Spec</th><th>Manufacturing implication</th></tr></thead>
+    <tbody>${c.features.map((f,i)=>`<tr><td>${esc(f.feature)}</td><td class="mono">${ed(0,`card.features.${i}.spec`)}</td><td>${esc(f.manufacturing_implication)}</td></tr>`).join('')}</tbody></table></div>`;
+  stage.appendChild(ft);
+
+  const cr = el('div','panel');
+  cr.innerHTML = `<div class="panel-cap"><span>Critical requirements</span></div>
+    <div class="panel-body"><ul class="note-list">${c.critical_requirements.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+  stage.appendChild(cr);
+
+  if(c.review_flags?.length){
+    const fb = el('div','flag-box');
+    fb.innerHTML = `<div class="panel-cap">⚑ Review flags — must be resolved by the engineer</div>
+      <ul>${c.review_flags.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+    stage.appendChild(fb);
+  }
+
+  stage.appendChild(approveBar('Approving signs off the feature card as engineering truth. OP 30 searches part history using these (possibly corrected) values.',
+    async ()=>{
+      loadingView('Searching 12-part history — structured feature matching, scoring, cost-transferability check');
+      const t0=Date.now();
+      S.matches = await api('/stage/retrieve',{card:S.card});
+      await wait(Math.max(0, 1100-(Date.now()-t0)));
+      done=1; current=2; render();
+    }));
+}
+
+/* ---- OP30 similar parts ---- */
+function rMatches(){
+  const m=S.matches, stage=$('#stage');
+  stage.innerHTML = stageHead('Similar Parts','30',
+    `Deterministic feature matching over ${m.searched} historical parts — every score is explainable, no LLM involved. Cost history transfers only where the basis is comparable.`);
+  const list = el('div','panel');
+  list.innerHTML = `<div class="panel-cap"><span>Top matches</span><span>score / 100</span></div>` +
+    m.matches.map(x=>{
+      const p=x.part, lo=p.last_order;
+      return `<div class="match">
+        <div class="score">${x.score}<small>SCORE</small></div>
+        <div><h4>${esc(p.name)}</h4><div class="pn">${esc(p.part_no)} · ${esc(p.material)} · plant ${esc(p.plant)} · ${esc(p.qty_produced_total)} pcs lifetime</div>
+          <div class="reasons">${x.reasons.map(esc).join(' &nbsp;·&nbsp; ')}</div></div>
+        <div class="cost">${lo.year}: €${lo.unit_cost_eur.toFixed(2)}/pc @ ${lo.qty}<br>
+          <span class="transfer ${x.cost_transferable?'':'no'}">${x.cost_transferable?'COST TRANSFERABLE':'GEOMETRY ONLY'}</span></div>
+      </div>`; }).join('');
+  stage.appendChild(list);
+
+  if(m.geometry_twins_excluded?.length){
+    const fb = el('div','flag-box');
+    fb.innerHTML = `<div class="panel-cap">⚑ Geometry twins excluded from costing</div>
+      <ul>${m.geometry_twins_excluded.map(t=>`<li><b>${esc(t.part_no)}</b> — ${esc(t.name)} (${esc(t.material)}). ${esc(t.note)}</li>`).join('')}</ul>`;
+    stage.appendChild(fb);
+  }
+
+  stage.appendChild(approveBar('Approving accepts this reference set as the cost-calibration basis. OP 40 drafts the BOM and process routing grounded in these references.',
+    async ()=>{
+      loadingView('Drafting BOM and process routing — grounding every line in reference actuals');
+      const t0=Date.now();
+      S.bom = await api('/stage/bom',{card:S.card,matches:S.matches});
+      S.routing = await api('/stage/process',{card:S.card,bom:S.bom,matches:S.matches});
+      await wait(Math.max(0, 1600-(Date.now()-t0)));
+      done=2; current=3; render();
+    }));
+}
+
+/* ---- OP40 BOM + routing ---- */
+function rBomRouting(){
+  const b=S.bom, r=S.routing, stage=$('#stage');
+  stage.innerHTML = stageHead('BOM & Routing','40',
+    'Manufacturing BOM and process routing drafts. Every line cites its basis — which historical part or rule it was calibrated against. Edit any blue value.');
+
+  const bom = el('div','panel');
+  bom.innerHTML = `<div class="panel-cap"><span>BOM draft — single level</span><span>raw: ${esc(b.raw_material.stock_size)} · gross ${esc(b.raw_material.gross_weight_kg)} kg</span></div>
+    <div class="panel-body"><table><thead><tr><th>Pos</th><th style="width:22%">Item</th><th style="width:30%">Spec</th><th>Qty</th><th>€/unit</th><th>Basis</th></tr></thead>
+    <tbody>${b.bom_lines.map((l,i)=>`<tr><td class="mono">${l.pos}</td><td>${esc(l.item)}</td><td class="mono">${ed(0,`bom.bom_lines.${i}.spec`)}</td>
+      <td class="num">${l.qty} ${esc(l.unit)}</td><td class="num">${ed(0,`bom.bom_lines.${i}.est_unit_cost_eur`)}</td>
+      <td style="font-size:11px;color:#5b5748">${esc(l.basis)}</td></tr>`).join('')}</tbody></table></div>`;
+  stage.appendChild(bom);
+
+  const rt = el('div','panel');
+  rt.innerHTML = `<div class="panel-cap"><span>Process routing draft</span><span>recommended plant: ${esc(r.recommended_plant.plant)}</span></div>
+    <div class="panel-body"><table><thead><tr><th>Op</th><th style="width:34%">Operation</th><th>Workcenter</th><th>Setup min</th><th>Cycle min/pc</th><th>Conf.</th><th>Basis</th></tr></thead>
+    <tbody>${r.routing.map((o,i)=>`<tr><td class="mono">${o.op}</td><td>${esc(o.operation)}</td><td class="mono">${esc(o.workcenter)}</td>
+      <td class="num">${ed(0,`routing.routing.${i}.setup_min`)}</td><td class="num">${ed(0,`routing.routing.${i}.cycle_min_per_pc`)}</td>
+      <td><span class="chip ${o.confidence}">${o.confidence[0].toUpperCase()}</span></td>
+      <td style="font-size:11px;color:#5b5748">${esc(o.basis)}</td></tr>`).join('')}</tbody></table>
+    <p style="font-family:var(--mono);font-size:11px;margin-top:10px;color:#4c483a">Plant rationale: ${esc(r.recommended_plant.why)}</p></div>`;
+  stage.appendChild(rt);
+
+  const notes = el('div','panel');
+  notes.innerHTML = `<div class="panel-cap"><span>Critical operations</span></div>
+    <div class="panel-body"><ul class="note-list">${r.critical_ops_notes.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+  stage.appendChild(notes);
+
+  const oq = [...(b.open_questions||[]), ...(r.open_questions||[])];
+  if(oq.length){
+    const fb = el('div','flag-box');
+    fb.innerHTML = `<div class="panel-cap">⚑ Open questions for the engineer</div><ul>${oq.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+    stage.appendChild(fb);
+  }
+
+  stage.appendChild(approveBar('Approving freezes BOM and routing (with your edits) as the costing basis. OP 50 rolls up cost for both quantity scenarios and drafts the quotation letter.',
+    async ()=>{
+      loadingView('Rolling up costs for 250 / 500 pcs scenarios — drafting quotation letter');
+      const t0=Date.now();
+      S.quote = await api('/stage/quote',{rfq_text:S.rfq,card:S.card,bom:S.bom,routing:S.routing,matches:S.matches});
+      await wait(Math.max(0, 1400-(Date.now()-t0)));
+      done=3; current=4; render();
+    }));
+}
+
+/* ---- OP50 quotation ---- */
+function rQuote(){
+  const q=S.quote, stage=$('#stage');
+  stage.innerHTML = stageHead('Quotation','50',
+    'Cost roll-up and customer-ready letter draft. The engineer gives final sign-off — nothing leaves the company without it.');
+  const COLORS = {material:'#1e50b3', machining:'#191813', heat_treatment:'#a92419', grinding:'#9a6b0a', overhead:'#7a7562'};
+
+  const sc = el('div','scenarios');
+  q.scenarios.forEach(s=>{
+    const total = Object.values(s.cost_breakdown_eur).reduce((a,b)=>a+b,0);
+    const bar = Object.entries(s.cost_breakdown_eur).map(([k,v])=>`<i style="width:${(v/total*100).toFixed(1)}%;background:${COLORS[k]}"></i>`).join('');
+    const leg = Object.entries(s.cost_breakdown_eur).map(([k,v])=>`<em><i class="dot" style="background:${COLORS[k]}"></i>${k.replace('_',' ')} €${v.toFixed(1)}</em>`).join('');
+    sc.appendChild(el('div','scn',
+      `<div class="qty">${s.qty} pcs ${s.qty===250?'· initial order':'· annual, 4 releases'}</div>
+       <div class="price">€ ${s.unit_price_eur.toFixed(2)}<small> /pc</small></div>
+       <div class="cost-line">unit cost €${s.unit_cost_eur.toFixed(2)} · margin ${s.margin_pct}% on price</div>
+       <div class="stackbar">${bar}</div><div class="sb-legend">${leg}</div>`));
+  });
+  stage.appendChild(sc);
+
+  const comm = el('div','panel');
+  comm.innerHTML = `<div class="panel-cap"><span>Commercial terms</span></div>
+    <div class="panel-body"><table><tbody>
+      <tr><th style="width:20%">Tooling</th><td class="mono">€ ${q.tooling_cost_eur.amount}</td><td style="font-size:11.5px;color:#5b5748">${esc(q.tooling_cost_eur.note)}</td></tr>
+      <tr><th>Lead time</th><td class="mono">${q.lead_time.first_batch_weeks} weeks</td><td style="font-size:11.5px;color:#5b5748">${esc(q.lead_time.note)}</td></tr>
+    </tbody></table></div>`;
+  stage.appendChild(comm);
+
+  const ar = el('div','panel');
+  ar.innerHTML = `<div class="panel-cap"><span>Assumptions &amp; risks — travel with the quote</span></div>
+    <div class="panel-body" style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <ul class="note-list">${q.assumptions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+      <ul class="note-list" style="color:#6b1710">${q.risks.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+    </div>`;
+  stage.appendChild(ar);
+
+  const lt = el('div','panel');
+  lt.innerHTML = `<div class="panel-cap"><span>Quotation letter draft</span><span>editable</span></div>
+    <div class="letter ai" contenteditable="true" data-path="quote.quote_letter_draft">${esc(q.quote_letter_draft)}</div>`;
+  stage.appendChild(lt);
+
+  const bar = el('div','approve');
+  const btn = el('button','stamp-btn','Final sign-off — release quotation');
+  btn.onclick = ()=>{ slamStamp(btn); btn.disabled=true; btn.textContent='Quotation released ✓'; done=4; renderRail(); };
+  bar.appendChild(btn);
+  bar.appendChild(el('div','hint','In production this pushes the quote to the ERP/CRM and archives the full decision trail — every AI draft, every human edit, every basis reference.'));
+  stage.appendChild(bar);
+}
+
+/* ================= boot ================= */
+(async function(){
+  try{
+    const [st, sample] = await Promise.all([api('/status'), api('/sample')]);
+    const badge = $('#modeBadge .tb-value');
+    badge.textContent = st.mode==='live' ? `LIVE · ${st.model}` : 'DEMO REPLAY';
+    badge.classList.toggle('live', st.mode==='live');
+    S.rfq = sample.rfq_text;
+    render();
+  }catch(e){
+    $('#stage').innerHTML = `<div class="flag-box"><div class="panel-cap">⚑ Backend not reachable</div>
+      <ul><li>${esc(e.message)}</li><li>Start it with: <b>cd backend &amp;&amp; uvicorn app:app --port 8000</b></li></ul></div>`;
+  }
+})();
+</script>
+</body>
+</html>

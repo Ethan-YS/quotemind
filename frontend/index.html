@@ -311,6 +311,7 @@ en:{
   pending_title:'⚑ Low-confidence operations awaiting your sign-off',
   pending_hint:'The model rated its own grounding weak here. Confirm each one — or remove the operation — before release.',
   pending_go:'Confirm now',
+  replay_note:'Demo replay — this stage\'s output is a cached snapshot of a real model run. Your corrections are carried into the next request, but the replayed answer does not recompute from them. Run a live backend to see corrections propagate end to end.',
   need_lines:'At least one BOM line and one routing operation must remain.',
   audit_removed:'Removed lines', audit_added:'Engineer-added lines', audit_ack:'Low-confidence operations confirmed',
   new_item:'(new item — describe it)', new_op:'(new operation — describe it)',
@@ -409,6 +410,7 @@ zh:{
   pending_title:'⚑ 低置信工序待你确认',
   pending_hint:'模型自评此处依据不足。逐条确认——或直接删除该工序——后方可放行。',
   pending_go:'去确认',
+  replay_note:'演示回放——本阶段输出是真实跑测的缓存快照。你的修正会随请求传入下一阶段，但回放的答案不会基于修正重算。切换 live 后端即可看到修正端到端传导。',
   need_lines:'BOM 与工艺至少各需保留一行。',
   audit_removed:'已删除的行', audit_added:'工程师新增的行', audit_ack:'已确认的低置信工序',
   new_item:'（新增物料——请填写）', new_op:'（新增工序——请填写）',
@@ -471,8 +473,9 @@ function ed(root, path, cls='', fmt=null){
   const v = fmt ? fmt(raw) : raw;
   const prior = S.edits[path];
   const orig = prior ? prior.from : String(v);
+  const field = path.split('.').filter(k=>!/^\d+$/.test(k)).pop().replace(/_/g,' ');
   return `<span class="ai ${cls}${prior?' edited':''}" contenteditable="true" role="textbox"
-    aria-label="AI draft value — click to edit" data-path="${path}" data-num="${isNum}"
+    aria-label="${esc(field)} — AI draft, editable" data-path="${path}" data-num="${isNum}"
     data-orig="${esc(orig)}"${prior?` title="${t('was')}: ${esc(prior.from)}"`:''}>${esc(v)}</span>`;
 }
 function refreshEditBadge(node){
@@ -483,6 +486,25 @@ function refreshEditBadge(node){
   else if(b.dataset.editable==='1'){ b.textContent = t('edit_hint'); b.classList.add('muted'); }
   else b.textContent = '';
 }
+/* Commit on every keystroke, not only on blur: what the screen shows and what
+   the pipeline holds must never diverge, or a quote can be released at a price
+   nobody approved. Blur only finalises formatting and the audit entry. */
+document.addEventListener('input', e=>{
+  const el = e.target;
+  if(!el.dataset?.path) return;
+  const raw = el.innerText.trim();
+  if(el.dataset.num==='true'){
+    const num = parseFloat(raw);
+    if(isNaN(num)) return;                // keep last good value; blur will revert display
+    setPath(S, el.dataset.path, num);
+  } else {
+    setPath(S, el.dataset.path, raw);
+  }
+  repriceOn(el.dataset.path);             // updates the counterpart field in place
+  refreshTotals();
+  refreshStaleBanner();
+}, true);
+
 document.addEventListener('blur', e=>{
   const el = e.target;
   if(!el.dataset?.path) return;
@@ -511,24 +533,63 @@ document.addEventListener('blur', e=>{
   setTimeout(()=>el.classList.remove('saved'), 550);
   refreshTotals();                        // edited minutes/costs roll up immediately
   repriceOn(el.dataset.path);
+  refreshStaleBanner();
 }, true);
 
 /* Price and margin are two views of one commercial decision: edit either,
-   the other follows from the unit cost handed over by OP 40. */
+   the other follows from the unit cost handed over by OP 40. Updates the
+   counterpart in place — re-rendering here would swallow the click that
+   follows the edit. */
 function repriceOn(path){
   const m = /^quote\.scenarios\.(\d+)\.(margin_pct|unit_price_eur)$/.exec(path||'');
-  if(!m) return;
-  const s = S.quote.scenarios[+m[1]];
+  if(!m || !S.quote) return;
+  const i = +m[1], s = S.quote.scenarios[i];
+  let otherPath, otherText;
   if(m[2]==='margin_pct'){
-    const pct = Math.min(95, Math.max(0, +s.margin_pct||0));
-    s.margin_pct = pct;
-    s.unit_price_eur = +(s.unit_cost_eur/(1-pct/100)).toFixed(2);
+    const pct = +s.margin_pct||0;
+    s.unit_price_eur = +(s.unit_cost_eur/(1-Math.min(99,pct)/100)).toFixed(2);
+    otherPath = `quote.scenarios.${i}.unit_price_eur`;
+    otherText = s.unit_price_eur.toFixed(2);
   }else{
-    const price = Math.max(0.01, +s.unit_price_eur||0);
-    s.unit_price_eur = price;
-    s.margin_pct = +((1 - s.unit_cost_eur/price)*100).toFixed(1);
+    const price = +s.unit_price_eur||0;
+    s.margin_pct = price>0 ? +((1 - s.unit_cost_eur/price)*100).toFixed(1) : 0;
+    otherPath = `quote.scenarios.${i}.margin_pct`;
+    otherText = String(s.margin_pct);
   }
-  render();
+  const node = document.querySelector(`[data-path="${otherPath}"]`);
+  if(node && node !== document.activeElement){
+    node.textContent = otherText;
+    node.classList.toggle('edited', otherText !== node.dataset.orig);
+  }
+}
+
+/* The letter-vs-cost-sheet check reads live state at the moment it matters,
+   never a value captured when the page was drawn. */
+function staleScenarios(){
+  if(!S.quote) return [];
+  return S.quote.scenarios.filter(s=>!S.quote.quote_letter_draft.includes(s.unit_price_eur.toFixed(2)));
+}
+function refreshStaleBanner(){
+  const slot = document.getElementById('staleSlot');
+  if(!slot) return;
+  slot.innerHTML = '';
+  const stale = staleScenarios();
+  if(!stale.length) return;
+  const warn = el('div','flag-box');
+  warn.innerHTML = `<div class="panel-cap">${t('letter_stale')}</div>
+    <ul>${stale.map(s=>`<li>${s.qty} pcs → <b>€ ${s.unit_price_eur.toFixed(2)}</b></li>`).join('')}</ul>`;
+  const sync = el('button','stamp-btn',t('letter_sync'));
+  sync.style.cssText = 'margin-top:10px;font-size:11px;padding:8px 16px';
+  sync.onclick = ()=>{
+    S.quote.scenarios.forEach((s,i)=>{
+      const old = S.letterPrices?.[i], now = s.unit_price_eur.toFixed(2);
+      if(old && old!==now) S.quote.quote_letter_draft = S.quote.quote_letter_draft.split(old).join(now);
+    });
+    S.letterPrices = S.quote.scenarios.map(s=>s.unit_price_eur.toFixed(2));
+    render();
+  };
+  warn.appendChild(sync);
+  slot.appendChild(warn);
 }
 
 /* live roll-up so the engineer sees the consequence of an edit at once */
@@ -643,9 +704,13 @@ function loadingView(msg, items){
 }
 
 /* ================= stage renderers ================= */
-function stageHead(title, opNo, desc){
+function stageHead(title, opNo, desc, replayed){
+  // In demo mode an LLM stage replays a snapshot; say so where the claim is made,
+  // not only in the README.
+  const note = (replayed && MODE==='demo')
+    ? `<p class="src-note" style="max-width:76ch;margin:-12px 0 18px">${t('replay_note')}</p>` : '';
   return `<div class="stage-head"><h2>${title}</h2><span class="mono">OP ${opNo} ${t('of50')}</span></div>
-          <p class="stage-desc">${desc}</p>`;
+          <p class="stage-desc">${desc}</p>${note}`;
 }
 
 let lastStage = null;
@@ -711,7 +776,7 @@ function rIntake(){
 /* ---- OP20 feature card ---- */
 function rCard(){
   const c=S.card, stage=$('#stage');
-  stage.innerHTML = stageHead(t('s20_t'),'20',t('s20_d'));
+  stage.innerHTML = stageHead(t('s20_t'),'20',t('s20_d'),true);
   const conf = f => { const lv=c.field_confidence?.[f]; return lv?`<span class="chip ${lv}">${lv[0].toUpperCase()}</span>`:''; };
 
   const idw = el('div','panel'); idw.innerHTML = `<div class="panel-cap"><span>${t('s20_id')}</span></div>
@@ -731,7 +796,7 @@ function rCard(){
 
   const cr = el('div','panel');
   cr.innerHTML = `<div class="panel-cap"><span>${t('s20_cr')}</span></div>
-    <div class="panel-body"><ul class="note-list">${c.critical_requirements.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    <div class="panel-body"><ul class="note-list">${c.critical_requirements.map((x,i)=>`<li>${ed(0,`card.critical_requirements.${i}`)}</li>`).join('')}</ul></div>`;
   stage.appendChild(cr);
 
   if(c.review_flags?.length){
@@ -814,7 +879,7 @@ function rMatches(){
 /* ---- OP40 BOM + routing ---- */
 function rBomRouting(){
   const b=S.bom, r=S.routing, stage=$('#stage');
-  stage.innerHTML = stageHead(t('s40_t'),'40',t('s40_d'));
+  stage.innerHTML = stageHead(t('s40_t'),'40',t('s40_d'),true);
 
   const bom = el('div','panel');
   bom.innerHTML = `<div class="panel-cap"><span>${t('s40_bom')} · <span class="totals" id="bomTotal"></span></span><span>${t('s40_raw')}: ${esc(b.raw_material.stock_size)} · ${t('s40_gross')} ${esc(b.raw_material.gross_weight_kg)} kg</span></div>
@@ -883,7 +948,16 @@ function rBomRouting(){
     <div class="panel-body"><ul class="note-list">${r.critical_ops_notes.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
   stage.appendChild(notes);
 
-  const oq = [...(b.open_questions||[]), ...(r.open_questions||[])];
+  // Two agents independently ask overlapping questions; the engineer should see
+  // each concern once, so near-duplicates are folded by token overlap.
+  const toks = q => new Set(q.toLowerCase().match(/[a-z0-9]+/g) || []);
+  const overlap = (a,bb)=>{ const A=toks(a), B=toks(bb);
+    const inter=[...A].filter(x=>B.has(x)).length;
+    return inter / Math.min(A.size, B.size || 1); };
+  const oq = [];
+  for(const q of [...(b.open_questions||[]), ...(r.open_questions||[])]){
+    if(!oq.some(e=>overlap(e,q) >= 0.8)) oq.push(q);
+  }
   if(oq.length){
     const fb = el('div','flag-box');
     fb.innerHTML = `<div class="panel-cap">${t('s40_oq')}</div><ul>${oq.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
@@ -943,7 +1017,7 @@ function rBomRouting(){
 /* ---- OP50 quotation ---- */
 function rQuote(){
   const q=S.quote, stage=$('#stage');
-  stage.innerHTML = stageHead(t('s50_t'),'50',t('s50_d'));
+  stage.innerHTML = stageHead(t('s50_t'),'50',t('s50_d'),true);
   const COLORS = {material:'#1e50b3', machining:'#191813', heat_treatment:'#a92419', grinding:'#9a6b0a', overhead:'#7a7562'};
 
   const sc = el('div','scenarios');
@@ -1013,27 +1087,10 @@ function rQuote(){
     stage.appendChild(au);
   }
 
-  // A letter that disagrees with its own cost sheet is the one defect that
-  // must never reach the customer — so it is checked, not trusted.
-  const stale = q.scenarios.filter(s=>!q.quote_letter_draft.includes(s.unit_price_eur.toFixed(2)));
-  if(stale.length){
-    const warn = el('div','flag-box');
-    warn.innerHTML = `<div class="panel-cap">${t('letter_stale')}</div>
-      <ul>${stale.map(s=>`<li>${s.qty} pcs → <b>€ ${s.unit_price_eur.toFixed(2)}</b></li>`).join('')}</ul>`;
-    const sync = el('button','stamp-btn',t('letter_sync'));
-    sync.style.cssText = 'margin-top:10px;font-size:11px;padding:8px 16px';
-    sync.onclick = ()=>{
-      q.scenarios.forEach((s,i)=>{
-        const old = S.letterPrices?.[i];
-        const now = s.unit_price_eur.toFixed(2);
-        if(old && old!==now) q.quote_letter_draft = q.quote_letter_draft.split(old).join(now);
-      });
-      S.letterPrices = q.scenarios.map(s=>s.unit_price_eur.toFixed(2));
-      render();
-    };
-    warn.appendChild(sync);
-    stage.appendChild(warn);
-  }
+  // A letter that disagrees with its own cost sheet is the one defect that must
+  // never reach the customer — checked live, not trusted.
+  const slot = el('div'); slot.id = 'staleSlot';
+  stage.appendChild(slot);
 
   const lt = el('div','panel');
   lt.innerHTML = `<div class="panel-cap"><span>${t('s50_letter')}</span><span>${t('s50_editable')}</span></div>
@@ -1044,7 +1101,12 @@ function rQuote(){
   const btn = el('button','stamp-btn', done>=4 ? t('released') : t('final'));
   if(done>=4) btn.disabled=true;
   btn.onclick = ()=>{
-    if(stale.length){ alert(t('letter_block')); return; }
+    if(staleScenarios().length){          // re-checked at the instant of release
+      alert(t('letter_block'));
+      refreshStaleBanner();
+      document.getElementById('staleSlot')?.scrollIntoView({block:'center', behavior:'smooth'});
+      return;
+    }
     slamStamp(btn); btn.disabled=true; btn.textContent=t('released'); done=4; renderRail();
   };
   bar.appendChild(btn);
@@ -1054,6 +1116,7 @@ function rQuote(){
   bar.appendChild(el('div','hint',t('final_hint')));
   stage.appendChild(bar);
   refreshEditBadge(badge);
+  refreshStaleBanner();
 }
 
 /* ================= boot ================= */

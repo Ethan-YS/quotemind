@@ -185,6 +185,13 @@ tr.row-off .act-btn:hover{border-color:var(--green);color:var(--green)}
 .ack-btn{font-family:var(--mono);font-size:9px;border:1px solid var(--red);background:none;
   padding:1px 5px;cursor:pointer;color:var(--red);margin-left:5px;white-space:nowrap}
 .ack-btn.on{border-color:var(--green);color:var(--green)}
+tr.needs-ack td:first-child{box-shadow:inset 3px 0 0 var(--red)}
+@keyframes flash{0%,100%{background:transparent}30%,70%{background:#f6ddd8}}
+.flash{animation:flash 1.2s ease-in-out 2}
+.pending-row{display:flex;align-items:center;gap:10px;padding:3px 0;font-size:12.5px;color:#6b1710}
+.pending-row .go{font-family:var(--mono);font-size:9.5px;border:1px solid var(--red);background:none;
+  padding:2px 8px;cursor:pointer;color:var(--red);white-space:nowrap}
+.pending-row .go:hover{background:var(--red);color:#fff}
 .add-row{font-family:var(--mono);font-size:10.5px;border:1.5px dashed var(--line);background:none;
   padding:6px 14px;cursor:pointer;color:#5b5748;margin-top:10px}
 .add-row:hover{border-color:var(--blue);color:var(--blue)}
@@ -301,6 +308,9 @@ en:{
   rt_total:(c,s)=>`Machine time <b>${c.toFixed(1)} min</b>/pc · setup <b>${s} min</b>`,
   ack_btn:'Confirm', ack_done:'Confirmed ✓',
   need_ack:'Low-confidence operations must be confirmed by the engineer before release:\n',
+  pending_title:'⚑ Low-confidence operations awaiting your sign-off',
+  pending_hint:'The model rated its own grounding weak here. Confirm each one — or remove the operation — before release.',
+  pending_go:'Confirm now',
   need_lines:'At least one BOM line and one routing operation must remain.',
   audit_removed:'Removed lines', audit_added:'Engineer-added lines', audit_ack:'Low-confidence operations confirmed',
   new_item:'(new item — describe it)', new_op:'(new operation — describe it)',
@@ -396,6 +406,9 @@ zh:{
   rt_total:(c,s)=>`机时合计 <b>${c.toFixed(1)} 分钟</b>/件 · 调机 <b>${s} 分钟</b>`,
   ack_btn:'确认', ack_done:'已确认 ✓',
   need_ack:'低置信工序须经工程师确认后方可放行：\n',
+  pending_title:'⚑ 低置信工序待你确认',
+  pending_hint:'模型自评此处依据不足。逐条确认——或直接删除该工序——后方可放行。',
+  pending_go:'去确认',
   need_lines:'BOM 与工艺至少各需保留一行。',
   audit_removed:'已删除的行', audit_added:'工程师新增的行', audit_ack:'已确认的低置信工序',
   new_item:'（新增物料——请填写）', new_op:'（新增工序——请填写）',
@@ -585,7 +598,10 @@ function approveBar(hint, onNext, opts={}){
   const btn = el('button','stamp-btn',t('approve'));
   if(opts.disabled){ btn.disabled = true; btn.title = opts.disabledReason || ''; }
   btn.onclick = async ()=>{
-    if(opts.validate){ const problem = opts.validate(); if(problem){ alert(problem); return; } }
+    if(opts.validate){
+      const problem = opts.validate();
+      if(problem){ alert(problem); opts.onInvalid?.(); return; }   // say what's wrong, then take them there
+    }
     btn.disabled=true; slamStamp(btn); await wait(450);
     try{ await onNext(); }
     catch(err){ alert(`${t('stage_fail')}: ${err.message}`); render(); }
@@ -819,7 +835,7 @@ function rBomRouting(){
     <div class="panel-body"><table><thead><tr><th>${t('th_op')}</th><th style="width:30%">${t('th_operation')}</th><th>${t('th_wc')}</th><th>${t('th_setup')}</th><th>${t('th_cycle')}</th><th>${t('th_conf')}</th><th>${t('th_basis')}</th><th>${t('th_act')}</th></tr></thead>
     <tbody>${r.routing.map((o,i)=>{
       const off=!rtKept(o), low=o.confidence==='low', ack=!!S.ackLow[o.op];
-      return `<tr class="${off?'row-off':''}${o._added?' row-added':''}"><td class="mono">${o.op}</td>
+      return `<tr id="op-row-${o.op}" class="${off?'row-off':''}${o._added?' row-added':''}${low&&!off&&!ack?' needs-ack':''}"><td class="mono">${o.op}</td>
       <td>${ed(0,`routing.routing.${i}.operation`)}${o._added?`<span class="tag-added">${t('tag_added')}</span>`:''}</td>
       <td class="mono">${ed(0,`routing.routing.${i}.workcenter`)}</td>
       <td class="num">${ed(0,`routing.routing.${i}.setup_min`)}</td><td class="num">${ed(0,`routing.routing.${i}.cycle_min_per_pc`)}</td>
@@ -874,6 +890,26 @@ function rBomRouting(){
     stage.appendChild(fb);
   }
 
+  // The gate must also be the place you can clear it from.
+  const pendingOps = () => r.routing.filter(o=>rtKept(o) && o.confidence==='low' && !S.ackLow[o.op]);
+  const pending = pendingOps();
+  if(pending.length){
+    const pb = el('div','flag-box'); pb.id = 'pendingAck';
+    pb.innerHTML = `<div class="panel-cap">${t('pending_title')}</div>` +
+      pending.map(o=>`<div class="pending-row"><button class="go" data-op="${o.op}">${t('pending_go')}</button>
+        <span><b>OP ${o.op}</b> — ${esc(o.operation)}</span></div>`).join('') +
+      `<p style="font-family:var(--mono);font-size:10.5px;margin-top:8px;color:#8a3226">${t('pending_hint')}</p>`;
+    stage.appendChild(pb);
+    pb.querySelectorAll('.go').forEach(btn=>{
+      btn.onclick = ()=>{
+        const row = document.getElementById(`op-row-${btn.dataset.op}`);
+        row?.scrollIntoView({block:'center', behavior:'smooth'});
+        row?.classList.add('flash');
+        row?.querySelector('.ack-btn')?.focus();
+      };
+    });
+  }
+
   stage.appendChild(approveBar(t('s40_hint'),
     async ()=>{
       loadingView(t('s40_load'), t('chk_quote'));
@@ -892,9 +928,15 @@ function rBomRouting(){
      validate:()=>{
        if(!b.bom_lines.some(bomKept) || !r.routing.some(rtKept)) return t('need_lines');
        // documented HITL rule: low confidence forces explicit human sign-off
-       const pending = r.routing.filter(o=>rtKept(o) && o.confidence==='low' && !S.ackLow[o.op]);
-       if(pending.length) return t('need_ack') + pending.map(o=>`  · OP ${o.op} — ${o.operation}`).join('\n');
+       const p = pendingOps();
+       if(p.length) return t('need_ack') + p.map(o=>`  · OP ${o.op} — ${o.operation}`).join('\n');
        return null;
+     },
+     onInvalid:()=>{
+       const first = pendingOps()[0];
+       const row = first && document.getElementById(`op-row-${first.op}`);
+       row?.scrollIntoView({block:'center', behavior:'smooth'});
+       row?.classList.add('flash');
      }}));
 }
 

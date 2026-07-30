@@ -89,6 +89,20 @@ td.mono{font-family:var(--mono);font-size:12px}
 [contenteditable]{outline:none;border-bottom:1px dashed transparent}
 [contenteditable]:hover{border-bottom-color:var(--blue)}
 [contenteditable]:focus{background:var(--blue-soft);border-bottom-color:var(--blue)}
+.ai[contenteditable]:hover::after{content:'✎';font-size:10px;margin-left:4px;opacity:.65;pointer-events:none;user-select:none}
+.ai[contenteditable]:focus::after{content:none}
+.ai.edited{border-bottom:1.5px solid var(--blue)}
+.ai.invalid{background:var(--red-soft)!important;border-bottom-color:var(--red)!important}
+.edit-badge{font-family:var(--mono);font-size:10.5px;color:var(--blue);line-height:1.6;max-width:30ch}
+/* input source picker */
+.src-bar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.src-lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#7a7562}
+.src-btn{font-family:var(--mono);font-size:11px;border:1.5px solid var(--ink);background:none;padding:6px 12px;cursor:pointer;color:var(--ink)}
+.src-btn.on{background:var(--ink);color:var(--paper)}
+.src-btn:disabled{opacity:.45;cursor:not-allowed}
+.src-note{font-family:var(--mono);font-size:10px;color:#7a7562;max-width:52ch}
+.upload-zone{padding:14px 16px;font-family:var(--mono);font-size:11px;display:flex;gap:12px;align-items:center;border-bottom:1px solid var(--line-soft)}
+.rfq-pre[contenteditable]:focus{background:var(--blue-soft)}
 .chip{font-family:var(--mono);font-size:9px;letter-spacing:.08em;border:1px solid;padding:1px 5px;border-radius:2px;white-space:nowrap}
 .chip.high{color:var(--green);border-color:var(--green)}
 .chip.medium{color:var(--amber);border-color:var(--amber)}
@@ -202,6 +216,14 @@ en:{
   s10_mail:'Customer e-mail', s10_att:'Attachment — engineering drawing',
   s10_hint:'Confirms the intake is complete and legible. OP 20 sends the drawing to the vision model and extracts a structured feature card.',
   s10_load:'Reading drawing GS-4032 Rev. B — extracting features, tolerances, critical requirements',
+  src_label:'Input source', src_sample:'Bundled sample', src_custom:'Your own RFQ + drawing',
+  src_demo_note:'Demo replay is locked to the bundled sample — run a live backend (Gemini / Claude CLI / Codex CLI) to analyze your own documents.',
+  src_upload:'Upload drawing (PNG / JPG, ≤10 MB)', src_uploaded:'uploaded ✓',
+  src_rfq_note:'Custom mode: the RFQ text below is directly editable.',
+  src_need_file:'Upload a drawing before releasing to OP 20.',
+  upload_fail:'Upload failed',
+  edits:n=>`✎ ${n} value${n>1?'s':''} corrected by the engineer — corrections feed the next stage`,
+  was:'was',
   s20_t:'Drawing Review',
   s20_d:'AI-extracted part feature card. Blue values are drafts — click any of them to correct; your corrections feed every later stage. Confidence chips route attention.',
   s20_id:'Identification', s20_ft:'Extracted features', s20_items:'items',
@@ -260,6 +282,14 @@ zh:{
   s10_mail:'客户邮件', s10_att:'附件——工程图纸',
   s10_hint:'确认收件完整、可读。OP 20 将把图纸送入视觉模型，抽取结构化特征卡。',
   s10_load:'正在读取图纸 GS-4032 Rev. B——抽取特征、公差与关键要求',
+  src_label:'输入来源', src_sample:'内置样例', src_custom:'自有 RFQ + 图纸',
+  src_demo_note:'演示回放固定使用内置样例——切换 live 后端（Gemini / Claude CLI / Codex CLI）即可分析你自己的文件。',
+  src_upload:'上传图纸（PNG / JPG，≤10 MB）', src_uploaded:'已上传 ✓',
+  src_rfq_note:'自有模式：下方 RFQ 文本可直接编辑。',
+  src_need_file:'请先上传图纸，再放行至 OP 20。',
+  upload_fail:'上传失败',
+  edits:n=>`✎ 工程师已修正 ${n} 处——修正将传入下一阶段`,
+  was:'原值',
   s20_t:'图纸审查',
   s20_d:'AI 抽取的零件特征卡。蓝色值为草稿——点击即可修正；你的修正会传入后续所有阶段。置信度标签指示注意力方向。',
   s20_id:'零件识别', s20_ft:'抽取特征', s20_items:'项',
@@ -306,8 +336,10 @@ let lang = localStorage.getItem('qm-lang') || 'en';
 const t = k => (L[lang][k] ?? L.en[k] ?? k);
 
 /* ================= state & helpers ================= */
-const S = { rfq:null, card:null, matches:null, bom:null, routing:null, quote:null };
+const S = { rfq:null, card:null, matches:null, bom:null, routing:null, quote:null,
+            source:'sample', uploadId:null, uploadUrl:null, edits:{} };
 let current = 0, done = -1;   // done = highest approved stage index
+let MODE = 'demo';
 
 const $ = sel => document.querySelector(sel);
 const el = (tag, cls, html) => { const e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; };
@@ -323,13 +355,41 @@ function setPath(obj, path, val){
 function ed(root, path, cls=''){
   const v = getPath(S, path);
   const isNum = typeof v === 'number';
-  return `<span class="ai ${cls}" contenteditable="true" data-path="${path}" data-num="${isNum}">${esc(v)}</span>`;
+  const prior = S.edits[path];
+  const orig = prior ? prior.from : String(v);
+  return `<span class="ai ${cls}${prior?' edited':''}" contenteditable="true" role="textbox"
+    aria-label="AI draft value — click to edit" data-path="${path}" data-num="${isNum}"
+    data-orig="${esc(orig)}"${prior?` title="${t('was')}: ${esc(prior.from)}"`:''}>${esc(v)}</span>`;
+}
+function refreshEditBadge(){
+  const n = Object.keys(S.edits).length;
+  const b = document.getElementById('editBadge');
+  if(b) b.textContent = n ? t('edits')(n) : '';
 }
 document.addEventListener('blur', e=>{
-  const t = e.target;
-  if(!t.dataset?.path) return;
-  const raw = t.innerText.trim();
-  setPath(S, t.dataset.path, t.dataset.num==='true' && !isNaN(parseFloat(raw)) ? parseFloat(raw) : raw);
+  const el = e.target;
+  if(!el.dataset?.path) return;
+  const raw = el.innerText.trim();
+  if(el.dataset.num==='true'){
+    const num = parseFloat(raw);
+    if(isNaN(num)){                       // reject non-numeric edits, restore draft
+      el.textContent = el.dataset.orig;
+      el.classList.add('invalid');
+      setTimeout(()=>el.classList.remove('invalid'), 900);
+      return;
+    }
+    setPath(S, el.dataset.path, num);
+  } else {
+    setPath(S, el.dataset.path, raw);
+  }
+  const changed = raw !== el.dataset.orig;
+  if(el.dataset.path !== 'rfq'){          // rfq text is source, not an AI draft
+    if(changed) S.edits[el.dataset.path] = {from: el.dataset.orig, to: raw};
+    else delete S.edits[el.dataset.path];
+    el.classList.toggle('edited', changed);
+    el.title = changed ? `${t('was')}: ${el.dataset.orig}` : '';
+    refreshEditBadge();
+  }
 }, true);
 
 async function api(path, body){
@@ -378,12 +438,16 @@ function slamStamp(btn){
   setTimeout(()=>st.remove(), 900);
 }
 
-function approveBar(hint, onNext){
+function approveBar(hint, onNext, opts={}){
   const bar = el('div','approve');
   const btn = el('button','stamp-btn',t('approve'));
+  if(opts.disabled){ btn.disabled = true; btn.title = opts.disabledReason || ''; }
   btn.onclick = async ()=>{ btn.disabled=true; slamStamp(btn); await wait(450); await onNext(); };
   bar.appendChild(btn);
+  bar.appendChild(el('span','edit-badge',''));
+  bar.lastChild.id = 'editBadge';
   bar.appendChild(el('div','hint',hint));
+  refreshEditBadge();
   return bar;
 }
 
@@ -407,20 +471,50 @@ function render(){ renderChrome(); renderRail(); [rIntake,rCard,rMatches,rBomRou
 function rIntake(){
   const stage=$('#stage');
   stage.innerHTML = stageHead(t('s10_t'),'10',t('s10_d'));
+
+  const custom = S.source==='custom';
+  const src = el('div','src-bar');
+  src.innerHTML = `<span class="src-lab">${t('src_label')}</span>
+    <button class="src-btn${custom?'':' on'}" id="srcSample">${t('src_sample')}</button>
+    <button class="src-btn${custom?' on':''}" id="srcCustom" ${MODE==='demo'?'disabled':''}>${t('src_custom')}</button>
+    <span class="src-note">${MODE==='demo'?t('src_demo_note'):(custom?t('src_rfq_note'):'')}</span>`;
+  stage.appendChild(src);
+  src.querySelector('#srcSample').onclick = ()=>{ S.source='sample'; render(); };
+  const cbtn = src.querySelector('#srcCustom');
+  if(!cbtn.disabled) cbtn.onclick = ()=>{ S.source='custom'; render(); };
+
   const g = el('div','intake');
   const p1 = el('div','panel'); p1.innerHTML =
-    `<div class="panel-cap"><span>${t('s10_mail')}</span><span>rfq_email.txt</span></div><pre class="rfq-pre">${esc(S.rfq)}</pre>`;
-  const p2 = el('div','panel drawing-frame'); p2.innerHTML =
-    `<div class="panel-cap"><span>${t('s10_att')}</span><span>GS-4032_RevB</span></div><img src="/samples/GS-4032_RevB.svg" alt="drawing">`;
+    `<div class="panel-cap"><span>${t('s10_mail')}</span><span>${custom?t('s50_editable'):'rfq_email.txt'}</span></div>
+     <pre class="rfq-pre" ${custom?'contenteditable="true" data-path="rfq" data-num="false" data-orig=""':''}>${esc(S.rfq)}</pre>`;
+  const p2 = el('div','panel drawing-frame');
+  const imgSrc = custom ? S.uploadUrl : '/samples/GS-4032_RevB.svg';
+  p2.innerHTML =
+    `<div class="panel-cap"><span>${t('s10_att')}</span><span>${custom?(S.uploadId?t('src_uploaded'):'—'):'GS-4032_RevB'}</span></div>
+     ${custom?`<div class="upload-zone"><label>${t('src_upload')}</label><input type="file" id="drawingFile" accept=".png,.jpg,.jpeg"></div>`:''}
+     ${imgSrc?`<img src="${imgSrc}" alt="drawing">`:''}`;
   g.append(p1,p2); stage.appendChild(g);
+
+  if(custom){
+    p2.querySelector('#drawingFile').onchange = async e=>{
+      const f = e.target.files[0]; if(!f) return;
+      const fd = new FormData(); fd.append('file', f);
+      const r = await fetch('/api/upload',{method:'POST',body:fd});
+      if(!r.ok){ alert(`${t('upload_fail')}: ${(await r.json()).detail||r.status}`); return; }
+      const j = await r.json();
+      S.uploadId = j.upload_id; S.uploadUrl = j.url; render();
+    };
+  }
+
   stage.appendChild(approveBar(t('s10_hint'),
     async ()=>{
       loadingView(t('s10_load'));
       const t0=Date.now();
-      S.card = await api('/stage/drawing',{rfq_text:S.rfq});
+      S.card = await api('/stage/drawing',{rfq_text:S.rfq, upload_id: custom ? S.uploadId : null});
       await wait(Math.max(0, 1400-(Date.now()-t0)));
       done=Math.max(done,0); current=1; render();
-    }));
+    },
+    custom && !S.uploadId ? {disabled:true, disabledReason:t('src_need_file')} : {}));
 }
 
 /* ---- OP20 feature card ---- */
@@ -605,6 +699,7 @@ $('#langBtn').onclick = ()=>{
 (async function(){
   try{
     const [st, sample] = await Promise.all([api('/status'), api('/sample')]);
+    MODE = st.mode;
     const badge = $('#modeBadge .tb-value');
     badge.dataset.mode = st.mode;
     badge.dataset.label = `LIVE · ${st.model}`;

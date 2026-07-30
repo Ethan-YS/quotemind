@@ -15,9 +15,16 @@ uvicorn app:app --port 8000
 # 打开 http://localhost:8000
 ```
 
-**零配置即可运行**：没有 API key 时自动进入 **demo mode**，回放内置样例（GS-4032 齿轮轴 RFQ）的预生成流水线输出，评审者无需任何配置就能走完全流程。
+**零配置即可运行**：没有配置任何后端时自动进入 **demo mode**，回放内置样例（GS-4032 齿轮轴 RFQ）的预生成流水线输出，评审者无需任何配置就能走完全流程。
 
-**Live mode**：`export GEMINI_API_KEY=...` 后重启即切换为真实 Gemini 调用（默认 `gemini-2.5-pro`，可用 `QUOTEMIND_MODEL` 覆盖）。
+**Live 后端（二选一）**：
+
+| 后端 | 启用方式 | 说明 |
+|---|---|---|
+| Gemini API | `export GEMINI_API_KEY=...` | 默认 `gemini-2.5-pro`，`QUOTEMIND_MODEL` 可覆盖 |
+| Claude CLI | `QUOTEMIND_BACKEND=claude-cli` | shell 到本地已登录的 Claude Code（`claude -p` 无头模式），**代码库不接触任何 API key** |
+
+重新生成 demo 缓存：`QUOTEMIND_BACKEND=claude-cli python scripts/regen_demo_cache.py`（四阶段输出先过 schema 校验再落盘，失败保留旧缓存）。
 
 ## 架构决策（为什么这么设计）
 

@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from pipeline import bom_agent, drawing_agent, process_agent, quote_agent, retrieval
-from pipeline.llm import MODEL, live_enabled
+from pipeline.llm import backend, backend_label
 
 ROOT = Path(__file__).resolve().parent.parent
 SAMPLES = ROOT / "samples"
@@ -51,7 +51,8 @@ class QuoteIn(BaseModel):
 
 @app.get("/api/status")
 def status():
-    return {"mode": "live" if live_enabled() else "demo", "model": MODEL}
+    b = backend()
+    return {"mode": "demo" if b == "demo" else "live", "backend": b, "model": backend_label()}
 
 
 @app.get("/api/sample")

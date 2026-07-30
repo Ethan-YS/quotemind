@@ -240,6 +240,7 @@ en:{
   load_live:'LIVE call in progress — a reasoning/vision stage can take 1–3 minutes. Do not reload; each click is a real model call.',
   stage_fail:'Stage failed',
   chk_drawing:['Part type & envelope','Material & general tolerances','Bearing seats & fits','Spline specification','Keyway','Thread','Runout requirement (GD&T)','Surface finish','Heat treatment & hardness','Demagnetizing requirement','Certificates','Quantities & delivery terms'],
+  chk_retrieval:['Part family match','Material class','Max diameter proximity','Length proximity','Spline specification','Keyway','Hardening route','Ground bearing seats & tolerance grade','Cost-transferability verdict','Geometry-twin exclusion'],
   chk_bomproc:['Raw material & stock size','Operation cost lines','Routing operations & workcenters','Hardening & straightening steps','Grinding & inspection plan','Cycle time calibration vs references','Plant recommendation','Open questions for the engineer'],
   chk_quote:['Cost roll-up @ 250 pcs','Cost roll-up @ 500 pcs','Tooling & lead time','Assumptions & risks','Quotation letter draft'],
   s20_t:'Drawing Review',
@@ -312,6 +313,7 @@ zh:{
   load_live:'LIVE 真实调用中——推理/视觉阶段可能需要 1–3 分钟。请勿刷新；每次点击都是一次真实模型调用。',
   stage_fail:'阶段执行失败',
   chk_drawing:['零件类型与外形包络','材料与通用公差','轴承座尺寸与配合','花键规格','键槽','螺纹','跳动要求（GD&T）','表面粗糙度','热处理与硬度','去磁要求','材质证明','数量与交付条款'],
+  chk_retrieval:['零件族匹配','材料等级','最大直径接近度','长度接近度','花键规格','键槽','热处理路线','磨削轴承座与公差等级','成本可迁移性判定','几何双胞胎排除'],
   chk_bomproc:['毛坯与料径','作业成本行','工艺路线与工作中心','淬火与校直工序','磨削与检验方案','节拍对参考件校准','推荐工厂','留给工程师的待确认问题'],
   chk_quote:['250 件成本汇总','500 件成本汇总','工装与交期','假设与风险','报价信草稿'],
   s20_t:'图纸审查',
@@ -605,10 +607,10 @@ function rCard(){
 
   stage.appendChild(approveBar(t('s20_hint'),
     async ()=>{
-      loadingView(t('s20_load'));
+      loadingView(t('s20_load'), t('chk_retrieval'));
       const t0=Date.now();
       S.matches = await api('/stage/retrieve',{card:S.card});
-      await wait(Math.max(0, 1100-(Date.now()-t0)));
+      await wait(Math.max(0, 1900-(Date.now()-t0)));
       done=Math.max(done,1); current=2; render();
     }, {editable:true}));
 }

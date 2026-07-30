@@ -1,20 +1,98 @@
 {
   "bom_lines": [
-    { "pos": 1, "item": "Round bar 42CrMo4 +QT, peeled", "spec": "EN 10083-3, Ø45 × 190 mm", "qty": 1, "unit": "pc", "est_unit_cost_eur": 10.6, "basis": "PM-SH-1998 material cost (2026) scaled by gross weight" },
-    { "pos": 2, "item": "Induction hardening", "spec": "spline section, 54-58 HRC, depth 1.5-2.5 mm", "qty": 1, "unit": "op", "est_unit_cost_eur": 7.0, "basis": "PM-SH-2214 / PM-SH-1998 heat-treatment actuals" },
-    { "pos": 3, "item": "3.1 material certificate", "spec": "EN 10204, per heat lot", "qty": 1, "unit": "pc", "est_unit_cost_eur": 0.8, "basis": "mill cert surcharge amortized over 250-pc lot" },
-    { "pos": 4, "item": "Corrosion protection + packaging", "spec": "VCI paper, cardboard separators", "qty": 1, "unit": "pc", "est_unit_cost_eur": 0.6, "basis": "standard shaft packaging rule" }
+    {
+      "pos": 10,
+      "item": "Raw material blank",
+      "spec": "42CrMo4 +QT / 1.7225 round bar, EN 10204 3.1 certificate, saw cut for shaft blank",
+      "qty": 1,
+      "unit": "pc",
+      "est_unit_cost_eur": 10.1,
+      "basis": "Scaled from PM-SH-1998 material EUR 10.4 for 42CrMo4 +QT Ø40 x 185 mm; target is same material, Ø40 x 180 mm, slightly shorter. Cross-checked against PM-SH-2214 material EUR 11.2 for larger Ø42 x 195 mm."
+    },
+    {
+      "pos": 20,
+      "item": "CNC turning and centre drilling",
+      "spec": "Turn overall 180 mm shaft between centres, Ø40 m6 central diameter, shoulders/chamfers/radii, DIN 332-D M8 centre holes both ends",
+      "qty": 1,
+      "unit": "pc",
+      "est_unit_cost_eur": 16.5,
+      "basis": "Derived from PM-SH-2214 machining EUR 28.6 and PM-SH-1998 machining EUR 26.9; allocated turning share for same gear_shaft family, same IT6-class datum-bearing layout, similar length/diameter."
+    },
+    {
+      "pos": 30,
+      "item": "External spline machining",
+      "spec": "DIN 5480 W30 x 1.5 x 18 spline, length 45 mm, hobbed/cut and inspected to DIN 5480",
+      "qty": 1,
+      "unit": "pc",
+      "est_unit_cost_eur": 7.2,
+      "basis": "Taken primarily from PM-SH-2214 because it has the same DIN 5480 W30 x 1.5 x 18 spline; supported by PM-SH-1998 W28 x 1.5 x 16 spline cost history."
+    },
+    {
+      "pos": 40,
+      "item": "Keyway machining",
+      "spec": "Mill/slot keyway 12 P9 x 5 with fit inspection",
+      "qty": 1,
+      "unit": "pc",
+      "est_unit_cost_eur": 3.4,
+      "basis": "Based on PM-SH-2214 and PM-SH-1998, both with 12 P9 keyway in same material and shaft family."
+    },
+    {
+      "pos": 50,
+      "item": "External thread machining",
+      "spec": "Machine M20 x 1.5 external thread on right-end section, assumed 27 mm thread section pending drawing confirmation",
+      "qty": 1,
+      "unit": "pc",
+      "est_unit_cost_eur": 2.0,
+      "basis": "Added from PM-SH-2214, which includes M20 x 1.5 thread on comparable 42CrMo4 +QT gear shaft; PM-SH-1998 not used for this line because it has no thread."
+    },
+    {
+      "pos": 60,
+      "item": "Induction hardening",
+      "spec": "Induction harden spline section to 54-58 HRC, case depth 1.5-2.5 mm, with hardness/case-depth verification",
+      "qty": 1,
+      "unit": "pc",
+      "est_unit_cost_eur": 7.3,
+      "basis": "Averaged from PM-SH-2214 heat treatment EUR 7.4 and PM-SH-1998 EUR 7.0; both use induction hardening 54-58 HRC on comparable splined 42CrMo4 +QT shafts."
+    },
+    {
+      "pos": 70,
+      "item": "Cylindrical grinding and demagnetizing",
+      "spec": "Grind 2x Ø25 h6 bearing seats, Ra 0.4; hold runout 0.02 to datum A-B; demagnetize after grinding",
+      "qty": 1,
+      "unit": "pc",
+      "est_unit_cost_eur": 9.5,
+      "basis": "Interpolated between PM-SH-1998 grinding EUR 9.1 for 2x Ø25 h6 and PM-SH-2214 grinding EUR 9.8 for 2x Ø25 h6 on a slightly larger/longer shaft; includes demagnetizing as post-grind handling."
+    },
+    {
+      "pos": 80,
+      "item": "Final inspection and documentation",
+      "spec": "Dimensional inspection of Ø25 h6 seats, Ø40 m6, spline, keyway, M20 thread gauge, runout to A-B, surface finish, hardness report, material certificate review",
+      "qty": 1,
+      "unit": "pc",
+      "est_unit_cost_eur": 5.5,
+      "basis": "Based on inspection burden embedded in PM-SH-2214 and PM-SH-1998 overhead/routing; increased slightly for explicit runout 0.02, Ra 0.4 and hardening documentation requirements."
+    },
+    {
+      "pos": 90,
+      "item": "Manufacturing overhead, handling and packaging",
+      "spec": "Shop overhead, fixture handling, internal logistics, protective oiling and packaging for ground bearing seats",
+      "qty": 1,
+      "unit": "pc",
+      "est_unit_cost_eur": 10.9,
+      "basis": "Scaled from PM-SH-1998 overhead EUR 10.4 and PM-SH-2214 overhead EUR 11.4; target complexity sits between those references."
+    }
   ],
   "raw_material": {
-    "spec": "42CrMo4 +QT (1.7225), EN 10083-3",
-    "stock_size": "Ø45 × 190 mm",
-    "gross_weight_kg": 2.37,
-    "net_weight_kg": 1.9,
-    "scrap_note": "~0.47 kg turnings; grinding allowance 0.3 mm/side on ground seats"
+    "spec": "42CrMo4 +QT / 1.7225 round bar with EN 10204 3.1 certificate",
+    "stock_size": "Ø42 mm round bar, saw blank approx. 188 mm before facing and grinding allowance",
+    "gross_weight_kg": 2.05,
+    "net_weight_kg": 1.22,
+    "scrap_note": "Gross weight estimated from Ø42 x 188 mm steel blank at 7.85 g/cm3. Net weight estimated from stepped Ø40/Ø30/Ø25 shaft geometry using PM-SH-1998 and PM-SH-2214 as comparable geometry anchors; expected machining/saw-loss scrap approx. 0.83 kg per pc, recyclable steel turnings."
   },
   "open_questions": [
-    "Ø42 bar stock possible instead of Ø45 if straightness spec of peeled bar allows — would save ~€1.1/pc material",
-    "Customer certificate requirement: per batch or per heat lot? Quoted per heat lot.",
-    "Titanium reference PM-SH-1722 matched on geometry only — excluded from all cost lines (exotic material, cost not transferable)"
+    "Verify the GD&T feature control frame and exact controlled feature against the original drawing before releasing quote.",
+    "Confirm whether the M20 x 1.5 thread length is exactly the 27 mm right-end section.",
+    "Confirm whether spline is to be cut before induction hardening only, with no post-hardening spline grinding required.",
+    "Confirm production quantity basis for price release: current estimate is normalized around the 250-300 pc reference order range; 500 pcs may reduce setup/overhead absorption."
   ]
 }

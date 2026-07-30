@@ -1,37 +1,109 @@
 {
-  "part_name": "Gear shaft NW-350 conveyor drive",
+  "part_name": "GEAR SHAFT NW-350 CONVEYOR DRIVE",
   "drawing_no": "GS-4032",
   "revision": "B",
   "customer": "Nordwind Antriebstechnik GmbH",
-  "quantities": [250, 500],
+  "quantities": [
+    250,
+    500
+  ],
   "material": "42CrMo4 +QT (1.7225)",
-  "general_tolerances": "ISO 2768-mK",
+  "general_tolerances": "ISO 2768 - mK",
   "part_type": "gear_shaft",
   "max_dia_mm": 40,
   "length_mm": 180,
   "features": [
-    { "feature": "Bearing seat (left, datum A)", "spec": "Ø25 h6 × 28 mm, ground Ra 0.4", "manufacturing_implication": "cylindrical grinding required; IT6 grade" },
-    { "feature": "Spline section", "spec": "DIN 5480 W30 × 1.5 × 18, length 45 mm", "manufacturing_implication": "hobbing; induction hardened 54-58 HRC, case depth 1.5-2.5 mm" },
-    { "feature": "Gear seat", "spec": "Ø40 m6 × 52 mm, keyway 12 P9 × 5", "manufacturing_implication": "interference-fit seat, ground; keyway milling" },
-    { "feature": "Bearing seat (right, datum B)", "spec": "Ø25 h6 × 28 mm, ground Ra 0.4", "manufacturing_implication": "cylindrical grinding required" },
-    { "feature": "Threaded end", "spec": "M20 × 1.5 × 27 mm", "manufacturing_implication": "single-point threading on CNC lathe" },
-    { "feature": "Centre holes", "spec": "DIN 332-D M8 both ends", "manufacturing_implication": "enables between-centres grinding for runout requirement" }
+    {
+      "feature": "overall shaft length",
+      "spec": "180 mm",
+      "manufacturing_implication": "Controls total turned shaft length and setup datum planning."
+    },
+    {
+      "feature": "left bearing seat",
+      "spec": "Ø25 h6, length 28 mm, datum A",
+      "manufacturing_implication": "Precision turning/grinding required; tolerance-critical bearing fit."
+    },
+    {
+      "feature": "right bearing seat",
+      "spec": "Ø25 h6, length 28 mm, datum B",
+      "manufacturing_implication": "Precision turning/grinding required; tolerance-critical bearing fit and datum feature."
+    },
+    {
+      "feature": "bearing seat surface finish",
+      "spec": "Bearing seats ground, Ra 0.4",
+      "manufacturing_implication": "Grinding operation required after turning/heat treatment."
+    },
+    {
+      "feature": "spline section",
+      "spec": "Spline DIN 5480 W30 x 1.5 x 18, length 45 mm",
+      "manufacturing_implication": "Requires spline cutting/rolling/broaching capability and inspection to DIN 5480."
+    },
+    {
+      "feature": "spline hardening",
+      "spec": "Induction harden spline section 54-58 HRC, case depth 1.5-2.5 mm",
+      "manufacturing_implication": "Localized induction hardening and hardness/case-depth verification required."
+    },
+    {
+      "feature": "central diameter",
+      "spec": "Ø40 m6",
+      "manufacturing_implication": "Close-tolerance turned diameter; likely requires controlled finishing operation."
+    },
+    {
+      "feature": "keyway",
+      "spec": "Keyway 12 P9 x 5",
+      "manufacturing_implication": "Milling/slotting operation required with P9 fit tolerance inspection."
+    },
+    {
+      "feature": "runout",
+      "spec": "0.02 relative to A-B",
+      "manufacturing_implication": "Requires datum-based inspection between bearing-seat datums; setup concentricity is critical."
+    },
+    {
+      "feature": "right thread",
+      "spec": "M20 x 1.5, length 27 mm section",
+      "manufacturing_implication": "External threading operation required; thread gauge inspection expected."
+    },
+    {
+      "feature": "centre holes",
+      "spec": "Centre holes DIN 332 - D M8 both ends",
+      "manufacturing_implication": "Centre drilling required to support between-centres turning/grinding."
+    },
+    {
+      "feature": "undimensioned edges",
+      "spec": "Undimensioned chamfers 1 x 45°, fillet radii R0.6 max",
+      "manufacturing_implication": "Default edge break and radius controls apply across unspecified edges."
+    },
+    {
+      "feature": "post-grinding condition",
+      "spec": "Demagnetize after grinding",
+      "manufacturing_implication": "Demagnetization step required after grinding before final inspection/shipping."
+    }
   ],
   "critical_requirements": [
-    "Total runout 0.02 mm to datums A–B on gear seat",
-    "Induction hardening 54-58 HRC limited to spline section, case depth 1.5-2.5 mm",
-    "Bearing seats ground, Ra 0.4",
-    "3.1 material certificate per EN 10204",
-    "Demagnetize after grinding"
+    "Bearing seats Ø25 h6.",
+    "Runout 0.02 relative to datum A-B.",
+    "Induction hardened spline section 54-58 HRC, case depth 1.5-2.5 mm.",
+    "Bearing seats ground to Ra 0.4.",
+    "Material 42CrMo4 +QT per drawing.",
+    "3.1 material certificate per EN 10204.",
+    "First batch delivery 8 weeks after order."
   ],
   "field_confidence": {
-    "material": "high", "max_dia_mm": "high", "length_mm": "high",
-    "quantities": "high", "spline": "high", "runout": "high",
-    "keyway_depth": "medium", "hardening_case_depth": "medium"
+    "part_name": "high",
+    "drawing_no": "high",
+    "revision": "high",
+    "customer": "high",
+    "quantities": "high",
+    "material": "high",
+    "general_tolerances": "high",
+    "part_type": "high",
+    "max_dia_mm": "high",
+    "length_mm": "high",
+    "features": "medium",
+    "critical_requirements": "high"
   },
   "review_flags": [
-    "Revision B — change history not attached; confirm what changed vs Rev A before quoting",
-    "Keyway depth read as 5 mm from '12 P9 × 5' — confirm against CAD model",
-    "Ø40 seat tolerance read as m6 — verify against title block print quality"
+    "Verify the GD&T feature control frame and exact controlled feature against the original attached PDF before quoting.",
+    "Confirm whether the M20 x 1.5 thread length is exactly the 27 mm right-end section shown on the drawing."
   ]
 }

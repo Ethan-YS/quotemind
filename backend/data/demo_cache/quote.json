@@ -2,38 +2,60 @@
   "scenarios": [
     {
       "qty": 250,
-      "unit_cost_eur": 68.9,
-      "cost_breakdown_eur": { "material": 12.0, "machining": 33.4, "heat_treatment": 6.9, "grinding": 9.6, "overhead": 7.0 },
-      "unit_price_eur": 88.5,
+      "unit_cost_eur": 76.98,
+      "cost_breakdown_eur": {
+        "material": 10.1,
+        "machining": 43.08,
+        "heat_treatment": 5.51,
+        "grinding": 10.04,
+        "overhead": 8.25
+      },
+      "unit_price_eur": 98.69,
       "margin_pct": 22
     },
     {
       "qty": 500,
-      "unit_cost_eur": 62.4,
-      "cost_breakdown_eur": { "material": 11.6, "machining": 30.1, "heat_treatment": 6.3, "grinding": 8.7, "overhead": 5.7 },
-      "unit_price_eur": 79.9,
+      "unit_cost_eur": 75.96,
+      "cost_breakdown_eur": {
+        "material": 10.1,
+        "machining": 42.47,
+        "heat_treatment": 5.36,
+        "grinding": 9.89,
+        "overhead": 8.14
+      },
+      "unit_price_eur": 97.38,
       "margin_pct": 22
     }
   ],
   "tooling_cost_eur": {
     "amount": 0,
-    "note": "Spline hob DIN 5480 W30×1.5 already in-house (PM-SH-2214 program) — no tooling invoice. Pending: inductor coil check for IH-01; worst case ~€1,800 one-time (see routing open questions)."
+    "note": "No separate tooling cost assumed because existing DIN 5480 W30 x 1.5 x 18 spline capability, M20 x 1.5 thread tooling, h6 grinding setup, and inspection gauges are assumed available from comparable PM-SH-2214 production. Any dedicated customer gauge or special fixture would require engineering review before release."
   },
   "lead_time": {
-    "first_batch_weeks": 7,
-    "note": "Material 2 wks (stocked grade, peeled bar) + production 4 wks + buffer 1 wk — meets the customer's 8-week requirement."
+    "first_batch_weeks": 8,
+    "note": "8 weeks after order is accepted as feasible in this draft, subject to material availability, heat-treatment slot confirmation, and engineering sign-off of the original GS-4032 Rev. B drawing."
   },
   "assumptions": [
-    "Germany plant: 78 EUR/h machine+labor rate, 12% overhead on manufacturing cost, 22% target margin on selling price",
-    "Lot sizes: 250 single release (scenario 1) / 4 × 125 releases (scenario 2), setups amortized accordingly",
-    "Material at 2026-Q2 index (EUR 2.85/kg + QT/peeling surcharge); price escalation clause recommended beyond 6 months validity",
-    "Costs calibrated against PM-SH-2214 (2025 actuals, €68.4/pc at 300) and PM-SH-1998 (2026 actuals, €63.8/pc at 250) — both cost-transferable references",
-    "Scrap risk for the 0.02 runout requirement estimated at 2% and included in machining cost"
+    "Recommended plant is Germany, using the stated 78 EUR/h machine plus labor rate.",
+    "Material cost is EUR 10.10/pc for 42CrMo4 +QT / 1.7225 round bar with EN 10204 3.1 certificate, based on the reviewed BOM draft.",
+    "Routing times are taken from the reviewed routing draft; setup time is amortized over each quoted quantity scenario.",
+    "Direct manufacturing cost equals material plus rate-based routing cost. The 12% overhead is applied to that direct manufacturing cost.",
+    "Quoted unit price is calculated from total unit cost including overhead using a 22% target margin: price = unit cost / 0.78.",
+    "250 pcs and 500 pcs are treated as separate order quantity price breaks, not as a binding annual blanket agreement.",
+    "Spline is assumed to be machined before induction hardening with no post-hardening spline grinding or corrective rolling required.",
+    "M20 x 1.5 thread length is assumed to be the 27 mm right-end section shown in the feature card, pending drawing confirmation.",
+    "Bearing seats are ground after heat treatment to Ø25 h6, Ra 0.4, with runout 0.02 relative to datum A-B controlled at final inspection.",
+    "No scrap or yield adder beyond the provided routing and material allowance has been added.",
+    "Prices exclude VAT, freight, special packaging beyond protective oiling and standard packing, and any customer-specific PPAP or capability study not stated in the RFQ.",
+    "This is an internal quotation draft only; reviewing engineer approval and original PDF verification are required before release to Nordwind."
   ],
   "risks": [
-    "Rev B change history not provided — quotation explicitly bound to drawing GS-4032 Rev. B",
-    "Single induction-hardening cell (IH-01): capacity check required before order confirmation",
-    "At 500 pcs/yr, Poland transfer offers ~18% conversion-cost saving but adds requalification effort — recommend after first 2 releases"
+    "Original GS-4032 Rev. B PDF must be checked to verify the GD&T feature control frame and exact controlled feature for the 0.02 runout requirement.",
+    "The M20 x 1.5 thread length and any undercut or relief detail must be confirmed on the drawing.",
+    "Localized induction hardening of the spline may distort the shaft; post-hardening runout check and possible straightening are included but remain a quality risk.",
+    "Case depth 1.5-2.5 mm verification may require destructive sample sectioning or supplier certificate agreement; inspection plan must be approved.",
+    "The 8-week lead time depends on bar stock availability, heat-treatment capacity, and grinder capacity.",
+    "If Nordwind requires customer-specific gauges, PPAP, first article report, or special packaging, additional cost and lead time may apply."
   ],
-  "quote_letter_draft": "Dear Mr. Keller,\n\nThank you for your inquiry RFQ 2026-0847. We are pleased to quote the gear shaft GS-4032 Rev. B for your NW-350 conveyor drive series as follows:\n\n  - 250 pcs (initial order):   EUR 88.50 / pc\n  - 500 pcs/yr (4 releases):   EUR 79.90 / pc\n  - Tooling: none — compatible spline tooling is available in-house\n  - Delivery: first batch 7 weeks after order and drawing approval\n  - Included: 3.1 material certificate (EN 10204), 100% runout inspection\n  - Payment: 30 days net; Incoterms: FCA our works (Germany)\n\nPrices are based on drawing GS-4032 Rev. B and the current material index; offer validity 60 days.\n\nMit freundlichen Grüßen / Best regards,\nQuotation Engineering\nPrecisionMotion GmbH"
+  "quote_letter_draft": "Dear Mr. Keller,\n\nThank you for your RFQ 2026-0847 for gear shaft GS-4032 Rev. B for the NW-350 conveyor drive series.\n\nBased on the supplied requirements, we can offer the part in 42CrMo4 +QT with EN 10204 3.1 material certificate, induction hardened spline section 54-58 HRC, and ground Ø25 h6 bearing seats as follows:\n\n250 pcs initial order: EUR 98.69 per pc\n500 pcs order / annual quantity scenario: EUR 97.38 per pc\nTooling cost: EUR 0.00, assuming existing spline, thread, grinding, and inspection tooling can be used.\nLead time: first batch 8 weeks after order confirmation.\nPayment terms: 30 days net from invoice date.\n\nThe quotation assumes spline machining before induction hardening, no post-hardening spline grinding, standard protective oiling and packaging, and no customer-specific PPAP or special gauge requirement. Final release is subject to confirmation of the original GS-4032 Rev. B drawing, especially the runout control frame and the M20 x 1.5 thread detail.\n\nBest regards,\nPrecisionMotion GmbH"
 }

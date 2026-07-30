@@ -87,13 +87,16 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
 td.mono{font-family:var(--mono);font-size:12px}
 .ai{color:var(--blue)}                       /* AI-draft ink */
 [contenteditable]{outline:none;border-bottom:1px dashed transparent}
+.ai[contenteditable]{border-bottom-color:rgba(30,80,179,.45)}  /* editable is visible by default */
 [contenteditable]:hover{border-bottom-color:var(--blue)}
 [contenteditable]:focus{background:var(--blue-soft);border-bottom-color:var(--blue)}
 .ai[contenteditable]:hover::after{content:'✎';font-size:10px;margin-left:4px;opacity:.65;pointer-events:none;user-select:none}
 .ai[contenteditable]:focus::after{content:none}
 .ai.edited{border-bottom:1.5px solid var(--blue)}
 .ai.invalid{background:var(--red-soft)!important;border-bottom-color:var(--red)!important}
-.edit-badge{font-family:var(--mono);font-size:10.5px;color:var(--blue);line-height:1.6;max-width:30ch}
+.ai.saved{background:#e4efe4;transition:background .2s}
+.edit-badge{font-family:var(--mono);font-size:10.5px;color:var(--blue);line-height:1.6;max-width:34ch}
+.edit-badge.muted{color:#7a7562}
 /* input source picker */
 .src-bar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
 .src-lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#7a7562}
@@ -232,6 +235,7 @@ en:{
   src_need_file:'Upload a drawing before releasing to OP 20.',
   upload_fail:'Upload failed',
   edits:n=>`✎ ${n} value${n>1?'s':''} corrected by the engineer — corrections feed the next stage`,
+  edit_hint:'✎ Blue values are editable — changes are saved to the draft instantly and released on approve',
   was:'was',
   load_live:'LIVE call in progress — a reasoning/vision stage can take 1–3 minutes. Do not reload; each click is a real model call.',
   stage_fail:'Stage failed',
@@ -303,6 +307,7 @@ zh:{
   src_need_file:'请先上传图纸，再放行至 OP 20。',
   upload_fail:'上传失败',
   edits:n=>`✎ 工程师已修正 ${n} 处——修正将传入下一阶段`,
+  edit_hint:'✎ 蓝色值可点击编辑——修改即时暂存，批准时随流水线放行',
   was:'原值',
   load_live:'LIVE 真实调用中——推理/视觉阶段可能需要 1–3 分钟。请勿刷新；每次点击都是一次真实模型调用。',
   stage_fail:'阶段执行失败',
@@ -380,10 +385,13 @@ function ed(root, path, cls=''){
     aria-label="AI draft value — click to edit" data-path="${path}" data-num="${isNum}"
     data-orig="${esc(orig)}"${prior?` title="${t('was')}: ${esc(prior.from)}"`:''}>${esc(v)}</span>`;
 }
-function refreshEditBadge(){
+function refreshEditBadge(node){
+  const b = node || document.getElementById('editBadge');
+  if(!b) return;
   const n = Object.keys(S.edits).length;
-  const b = document.getElementById('editBadge');
-  if(b) b.textContent = n ? t('edits')(n) : '';
+  if(n){ b.textContent = t('edits')(n); b.classList.remove('muted'); }
+  else if(b.dataset.editable==='1'){ b.textContent = t('edit_hint'); b.classList.add('muted'); }
+  else b.textContent = '';
 }
 document.addEventListener('blur', e=>{
   const el = e.target;
@@ -409,6 +417,8 @@ document.addEventListener('blur', e=>{
     el.title = changed ? `${t('was')}: ${el.dataset.orig}` : '';
     refreshEditBadge();
   }
+  el.classList.add('saved');              // green flash = stored in the draft
+  setTimeout(()=>el.classList.remove('saved'), 550);
 }, true);
 
 async function api(path, body){
@@ -467,10 +477,12 @@ function approveBar(hint, onNext, opts={}){
     catch(err){ alert(`${t('stage_fail')}: ${err.message}`); render(); }
   };
   bar.appendChild(btn);
-  bar.appendChild(el('span','edit-badge',''));
-  bar.lastChild.id = 'editBadge';
+  const badge = el('span','edit-badge','');
+  badge.id = 'editBadge';
+  badge.dataset.editable = opts.editable ? '1' : '0';
+  bar.appendChild(badge);
   bar.appendChild(el('div','hint',hint));
-  refreshEditBadge();
+  refreshEditBadge(badge);
   return bar;
 }
 
@@ -598,7 +610,7 @@ function rCard(){
       S.matches = await api('/stage/retrieve',{card:S.card});
       await wait(Math.max(0, 1100-(Date.now()-t0)));
       done=Math.max(done,1); current=2; render();
-    }));
+    }, {editable:true}));
 }
 
 /* ---- OP30 similar parts ---- */
@@ -678,7 +690,7 @@ function rBomRouting(){
       S.quote = await api('/stage/quote',{rfq_text:S.rfq,card:S.card,bom:S.bom,routing:S.routing,matches:S.matches});
       await wait(Math.max(0, 1500-(Date.now()-t0)));
       done=Math.max(done,3); current=4; render();
-    }));
+    }, {editable:true}));
 }
 
 /* ---- OP50 quotation ---- */
@@ -726,8 +738,12 @@ function rQuote(){
   if(done>=4) btn.disabled=true;
   btn.onclick = ()=>{ slamStamp(btn); btn.disabled=true; btn.textContent=t('released'); done=4; renderRail(); };
   bar.appendChild(btn);
+  const badge = el('span','edit-badge','');
+  badge.id = 'editBadge'; badge.dataset.editable = '1';
+  bar.appendChild(badge);
   bar.appendChild(el('div','hint',t('final_hint')));
   stage.appendChild(bar);
+  refreshEditBadge(badge);
 }
 
 /* ================= boot ================= */

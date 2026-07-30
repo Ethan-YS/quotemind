@@ -304,6 +304,12 @@ en:{
   need_lines:'At least one BOM line and one routing operation must remain.',
   audit_removed:'Removed lines', audit_added:'Engineer-added lines', audit_ack:'Low-confidence operations confirmed',
   new_item:'(new item — describe it)', new_op:'(new operation — describe it)',
+  s50_price_lab:'unit price — edit price or margin, the other follows',
+  add_assumption:'+ Add assumption', add_risk:'+ Add risk',
+  new_assumption:'(new assumption — state it plainly)', new_risk:'(new risk — state it plainly)',
+  letter_stale:'⚠ The letter still quotes the previous prices — the cost sheet has moved',
+  letter_sync:'Update prices in letter',
+  letter_block:'The quotation letter still quotes the old prices. Sync or edit it before release — a quote whose letter and cost sheet disagree must never leave the company.',
   s30_load:'Drafting BOM and process routing — grounding every line in reference actuals',
   s40_t:'BOM & Routing',
   s40_d:'Manufacturing BOM and process routing drafts. Every line cites its basis — which historical part or rule it was calibrated against. Edit any blue value.',
@@ -393,6 +399,12 @@ zh:{
   need_lines:'BOM 与工艺至少各需保留一行。',
   audit_removed:'已删除的行', audit_added:'工程师新增的行', audit_ack:'已确认的低置信工序',
   new_item:'（新增物料——请填写）', new_op:'（新增工序——请填写）',
+  s50_price_lab:'单价——改价格或改毛利，另一个自动跟随',
+  add_assumption:'+ 增加假设', add_risk:'+ 增加风险',
+  new_assumption:'（新增假设——请写明）', new_risk:'（新增风险——请写明）',
+  letter_stale:'⚠ 报价信中仍是旧价格——成本表已变动',
+  letter_sync:'同步价格到报价信',
+  letter_block:'报价信中的价格与成本表不一致。请先同步或手动修改后再签发——报价信与成本表打架的报价，绝不能发出公司。',
   s30_load:'正在起草 BOM 与工艺路线——每一行都锚定参考件实绩',
   s40_t:'BOM 与工艺',
   s40_d:'制造 BOM 与工艺路线草稿。每一行都注明依据——按哪个历史零件或规则校准。蓝色值均可编辑。',
@@ -440,9 +452,10 @@ function setPath(obj, path, val){
   if(target) target[last.match(/^\d+$/)?+last:last] = val;
 }
 /* editable cell bound to state path; numeric paths parse back to number */
-function ed(root, path, cls=''){
-  const v = getPath(S, path);
-  const isNum = typeof v === 'number';
+function ed(root, path, cls='', fmt=null){
+  const raw = getPath(S, path);
+  const isNum = typeof raw === 'number';
+  const v = fmt ? fmt(raw) : raw;
   const prior = S.edits[path];
   const orig = prior ? prior.from : String(v);
   return `<span class="ai ${cls}${prior?' edited':''}" contenteditable="true" role="textbox"
@@ -484,7 +497,26 @@ document.addEventListener('blur', e=>{
   el.classList.add('saved');              // green flash = stored in the draft
   setTimeout(()=>el.classList.remove('saved'), 550);
   refreshTotals();                        // edited minutes/costs roll up immediately
+  repriceOn(el.dataset.path);
 }, true);
+
+/* Price and margin are two views of one commercial decision: edit either,
+   the other follows from the unit cost handed over by OP 40. */
+function repriceOn(path){
+  const m = /^quote\.scenarios\.(\d+)\.(margin_pct|unit_price_eur)$/.exec(path||'');
+  if(!m) return;
+  const s = S.quote.scenarios[+m[1]];
+  if(m[2]==='margin_pct'){
+    const pct = Math.min(95, Math.max(0, +s.margin_pct||0));
+    s.margin_pct = pct;
+    s.unit_price_eur = +(s.unit_cost_eur/(1-pct/100)).toFixed(2);
+  }else{
+    const price = Math.max(0.01, +s.unit_price_eur||0);
+    s.unit_price_eur = price;
+    s.margin_pct = +((1 - s.unit_cost_eur/price)*100).toFixed(1);
+  }
+  render();
+}
 
 /* live roll-up so the engineer sees the consequence of an edit at once */
 const bomKept = l => !S.removed.bom[l.pos];
@@ -600,7 +632,15 @@ function stageHead(title, opNo, desc){
           <p class="stage-desc">${desc}</p>`;
 }
 
-function render(){ clearInterval(loadTimer); renderChrome(); renderRail(); [rIntake,rCard,rMatches,rBomRouting,rQuote][current](); window.scrollTo({top:0}); }
+let lastStage = null;
+function render(){
+  clearInterval(loadTimer);
+  const y = window.scrollY, same = lastStage===current;
+  renderChrome(); renderRail();
+  [rIntake,rCard,rMatches,rBomRouting,rQuote][current]();
+  window.scrollTo({top: same ? y : 0});   // in-stage edits must not throw the reader to the top
+  lastStage = current;
+}
 
 /* ---- OP10 intake ---- */
 function rIntake(){
@@ -842,6 +882,9 @@ function rBomRouting(){
       const bomUsed = {...b, bom_lines: b.bom_lines.filter(bomKept)};
       const rtUsed  = {...r, routing:   r.routing.filter(rtKept)};
       S.quote = await api('/stage/quote',{rfq_text:S.rfq,card:S.card,bom:bomUsed,routing:rtUsed,matches:S.matchesUsed||S.matches});
+      S.quote._origAssump = S.quote.assumptions.length;   // anything past this is engineer-authored
+      S.quote._origRisks  = S.quote.risks.length;
+      S.letterPrices = S.quote.scenarios.map(s=>s.unit_price_eur.toFixed(2));
       await wait(Math.max(0, 1500-(Date.now()-t0)));
       done=Math.max(done,3); current=4; render();
     },
@@ -862,14 +905,17 @@ function rQuote(){
   const COLORS = {material:'#1e50b3', machining:'#191813', heat_treatment:'#a92419', grinding:'#9a6b0a', overhead:'#7a7562'};
 
   const sc = el('div','scenarios');
-  q.scenarios.forEach(s=>{
+  q.scenarios.forEach((s,i)=>{
     const total = Object.values(s.cost_breakdown_eur).reduce((a,b)=>a+b,0);
     const bar = Object.entries(s.cost_breakdown_eur).map(([k,v])=>`<i style="width:${(v/total*100).toFixed(1)}%;background:${COLORS[k]}"></i>`).join('');
     const leg = Object.entries(s.cost_breakdown_eur).map(([k,v])=>`<em><i class="dot" style="background:${COLORS[k]}"></i>${t('cb_'+k)} €${v.toFixed(1)}</em>`).join('');
     sc.appendChild(el('div','scn',
       `<div class="qty">${s.qty} pcs ${s.qty===250?t('s50_initial'):t('s50_annual')}</div>
-       <div class="price">€ ${s.unit_price_eur.toFixed(2)}<small> ${t('s50_pc')}</small></div>
-       <div class="cost-line">${t('s50_cost')} €${s.unit_cost_eur.toFixed(2)} · ${t('s50_margin')(s.margin_pct)}</div>
+       <div class="price">€ ${ed(0,`quote.scenarios.${i}.unit_price_eur`,'',n=>n.toFixed(2))}<small> ${t('s50_pc')}</small></div>
+       <div class="cost-line">${t('s50_cost')} €${s.unit_cost_eur.toFixed(2)} · ${
+         lang==='zh'?`售价毛利 ${ed(0,`quote.scenarios.${i}.margin_pct`)}%`
+                    :`margin ${ed(0,`quote.scenarios.${i}.margin_pct`)}% on price`}</div>
+       <div class="cost-line" style="color:#7a7562;font-size:10px">${t('s50_price_lab')}</div>
        <div class="stackbar">${bar}</div><div class="sb-legend">${leg}</div>`));
   });
   stage.appendChild(sc);
@@ -877,18 +923,29 @@ function rQuote(){
   const comm = el('div','panel');
   comm.innerHTML = `<div class="panel-cap"><span>${t('s50_comm')}</span></div>
     <div class="panel-body"><table><tbody>
-      <tr><th style="width:20%">${t('s50_tooling')}</th><td class="mono">€ ${q.tooling_cost_eur.amount}</td><td style="font-size:11.5px;color:#5b5748">${esc(q.tooling_cost_eur.note)}</td></tr>
-      <tr><th>${t('s50_lead')}</th><td class="mono">${q.lead_time.first_batch_weeks} ${t('s50_weeks')}</td><td style="font-size:11.5px;color:#5b5748">${esc(q.lead_time.note)}</td></tr>
+      <tr><th style="width:20%">${t('s50_tooling')}</th><td class="mono">€ ${ed(0,'quote.tooling_cost_eur.amount')}</td><td style="font-size:11.5px;color:#5b5748">${ed(0,'quote.tooling_cost_eur.note')}</td></tr>
+      <tr><th>${t('s50_lead')}</th><td class="mono">${ed(0,'quote.lead_time.first_batch_weeks')} ${t('s50_weeks')}</td><td style="font-size:11.5px;color:#5b5748">${ed(0,'quote.lead_time.note')}</td></tr>
     </tbody></table></div>`;
   stage.appendChild(comm);
 
   const ar = el('div','panel');
+  const listItems = (arr, key, orig) => arr.map((x,i)=>
+    `<li>${ed(0,`quote.${key}.${i}`)}${i>=orig?`<span class="tag-added">${t('tag_added')}</span>`:''}</li>`).join('');
   ar.innerHTML = `<div class="panel-cap"><span>${t('s50_ar')}</span></div>
     <div class="panel-body" style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-      <ul class="note-list">${q.assumptions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
-      <ul class="note-list" style="color:#6b1710">${q.risks.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+      <div><ul class="note-list">${listItems(q.assumptions,'assumptions',q._origAssump??q.assumptions.length)}</ul>
+        <button class="add-row" data-add="assumption">${t('add_assumption')}</button></div>
+      <div><ul class="note-list" style="color:#6b1710">${listItems(q.risks,'risks',q._origRisks??q.risks.length)}</ul>
+        <button class="add-row" data-add="risk">${t('add_risk')}</button></div>
     </div>`;
   stage.appendChild(ar);
+  ar.querySelectorAll('.add-row').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(btn.dataset.add==='assumption') q.assumptions.push(t('new_assumption'));
+      else q.risks.push(t('new_risk'));
+      render();
+    };
+  });
 
   const excl = Object.entries(S.excluded), edits = Object.entries(S.edits);
   const label = (kind,k)=> kind==='bom'
@@ -914,6 +971,28 @@ function rQuote(){
     stage.appendChild(au);
   }
 
+  // A letter that disagrees with its own cost sheet is the one defect that
+  // must never reach the customer — so it is checked, not trusted.
+  const stale = q.scenarios.filter(s=>!q.quote_letter_draft.includes(s.unit_price_eur.toFixed(2)));
+  if(stale.length){
+    const warn = el('div','flag-box');
+    warn.innerHTML = `<div class="panel-cap">${t('letter_stale')}</div>
+      <ul>${stale.map(s=>`<li>${s.qty} pcs → <b>€ ${s.unit_price_eur.toFixed(2)}</b></li>`).join('')}</ul>`;
+    const sync = el('button','stamp-btn',t('letter_sync'));
+    sync.style.cssText = 'margin-top:10px;font-size:11px;padding:8px 16px';
+    sync.onclick = ()=>{
+      q.scenarios.forEach((s,i)=>{
+        const old = S.letterPrices?.[i];
+        const now = s.unit_price_eur.toFixed(2);
+        if(old && old!==now) q.quote_letter_draft = q.quote_letter_draft.split(old).join(now);
+      });
+      S.letterPrices = q.scenarios.map(s=>s.unit_price_eur.toFixed(2));
+      render();
+    };
+    warn.appendChild(sync);
+    stage.appendChild(warn);
+  }
+
   const lt = el('div','panel');
   lt.innerHTML = `<div class="panel-cap"><span>${t('s50_letter')}</span><span>${t('s50_editable')}</span></div>
     <div class="letter ai" contenteditable="true" data-path="quote.quote_letter_draft">${esc(q.quote_letter_draft)}</div>`;
@@ -922,7 +1001,10 @@ function rQuote(){
   const bar = el('div','approve');
   const btn = el('button','stamp-btn', done>=4 ? t('released') : t('final'));
   if(done>=4) btn.disabled=true;
-  btn.onclick = ()=>{ slamStamp(btn); btn.disabled=true; btn.textContent=t('released'); done=4; renderRail(); };
+  btn.onclick = ()=>{
+    if(stale.length){ alert(t('letter_block')); return; }
+    slamStamp(btn); btn.disabled=true; btn.textContent=t('released'); done=4; renderRail();
+  };
   bar.appendChild(btn);
   const badge = el('span','edit-badge','');
   badge.id = 'editBadge'; badge.dataset.editable = '1';

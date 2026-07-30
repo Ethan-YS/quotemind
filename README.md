@@ -1,87 +1,96 @@
 # QuoteMind — AI RFQ→Quotation Agent
 
-> IndustrialMind.ai Solution Design Challenge · Option B 原型
-> 场景：PrecisionMotion GmbH（虚拟客户）· 完整方案设计见 [docs/solution-design.md](docs/solution-design.md)
-> 📝 中文工作稿 —— 定稿后整体替换为英文版
+> IndustrialMind.ai Solution Design Challenge · Option B prototype
+> Scenario: PrecisionMotion GmbH (fictional customer) · Full solution design: [docs/solution-design.md](docs/solution-design.md)
+> 中文版：[README.zh.md](README.zh.md)
 
-一条端到端的 AI 报价流水线：**客户 RFQ + 工程图纸 → 零件特征卡 → 相似件检索 → BOM 草稿 → 工艺路线草稿 → 成本分解 + 报价书草稿**。每个阶段都是一个人工审核门（human-in-the-loop）：工程师确认或修改后，下一阶段才会基于**修改后**的结果继续。
+An end-to-end AI quotation pipeline: **customer RFQ + engineering drawing → part feature card → comparable-part retrieval → BOM draft → routing draft → cost breakdown + quotation letter**. Every stage is a human-in-the-loop gate: the next stage only runs on what the engineer has reviewed — including their corrections.
 
-## 快速开始
+## Quick start
 
 ```bash
 cd backend
 pip install -r requirements.txt
 uvicorn app:app --port 8000
-# 打开 http://localhost:8000
+# open http://localhost:8000
 ```
 
-**无需 API key 或模型配置**：安装依赖并启动服务后，未配置任何后端时自动进入 **demo mode**，回放内置样例（GS-4032 齿轮轴 RFQ）的预生成流水线输出，评审者无需任何配置就能走完全流程。
+**No API key or model configuration required.** Once the dependencies are installed and the server is running, with no backend configured the app enters **demo mode** and replays a pre-generated run of the bundled sample (the GS-4032 gear shaft RFQ), so a reviewer can walk the full flow with zero setup.
 
-**Live 后端（二选一）**：
+**Live backends (any one of three):**
 
-| 后端 | 启用方式 | 说明 |
+| Backend | How to enable | Notes |
 |---|---|---|
-| Gemini API | `export GEMINI_API_KEY=...` | 默认 `gemini-2.5-pro`，`QUOTEMIND_MODEL` 可覆盖 |
-| Claude CLI | `QUOTEMIND_BACKEND=claude-cli` | shell 到本地已登录的 Claude Code（`claude -p` 无头模式），**代码库不接触任何 API key** |
-| Codex CLI | `QUOTEMIND_BACKEND=codex-cli` | 同理走 `codex exec`（含 `-i` 图纸视觉输入），模型 `QUOTEMIND_CODEX_MODEL`（默认 gpt-5.5） |
+| Gemini API | `export GEMINI_API_KEY=...` | Defaults to `gemini-2.5-pro`; override with `QUOTEMIND_MODEL` |
+| Claude CLI | `QUOTEMIND_BACKEND=claude-cli` | Shells out to a locally authenticated Claude Code (`claude -p`, headless) — **no API key ever touches this codebase** |
+| Codex CLI | `QUOTEMIND_BACKEND=codex-cli` | Same idea via `codex exec` (with `-i` for drawing vision); model set by `QUOTEMIND_CODEX_MODEL` (default `gpt-5.5`) |
 
-重新生成 demo 缓存：`QUOTEMIND_BACKEND=codex-cli python scripts/regen_demo_cache.py`（四阶段输出先过 schema 校验再落盘，失败保留旧缓存）。
+Regenerate the demo cache: `QUOTEMIND_BACKEND=codex-cli python scripts/regen_demo_cache.py` — all four stages are schema-validated before anything is written, and a failed run leaves the existing cache intact.
 
-## 架构决策（为什么这么设计）
+## Architecture decisions (and why)
 
-1. **每个阶段一个独立端点，而不是一次性跑完整条链。** 前端把"人审后（可能被修改过）"的阶段 N 输出传给阶段 N+1——HITL 不靠 UI 自觉，而是被 API 形状强制。这是制造业客户能信任 AI 的前提：判断权始终在工程师手里。
-2. **相似件检索故意不用 LLM。** 工程相似性是"约束满足 + 邻近度"，结构化特征匹配是混合检索中最该先做对的通道：确定性、可解释（每个匹配都带理由）、离线可跑。生产版在此之上叠加 dense/sparse 语义通道（见方案 §3.3）。
-3. **"几何双胞胎"排除名单。** 检索会显式列出几何近似但材料等级不同的零件（如钛合金试制轴）：几何可参考、成本不可迁移——这是报价估算最经典的坑，系统把它变成显式输出而不是默默排错或默默排对。
-4. **检索结果可被工程师否决（HITL 的最硬处）。** 算法只知道特征像不像，不知道"那批活当年热处理炉出过问题""那单是为拿客户亏本报的"——这些只在人脑子里。所以每条匹配都能被排除，且**必须写明理由**；被排除的参考件不进入 OP 40 的成本校准，理由随报价单归档（OP 50「工程师决策」面板）。这一步不是让人改数字，是让人**否决 AI 的证据基础**——检索恰恰是领域知识打败算法的地方。
-5. **特征卡有规则校验，不是只让人肉眼看。** 材料牌号在特征卡内部必须自洽——改了主材料却漏改"关键要求"里那句，系统会指名道姓标出矛盾条目并**拦截签发**；但它不假装自己判得准：合法差异（配对件、镀层、供应商备注）可由工程师「确认无冲突」放行，该确认进入决策归档。架构图里的"规则校验"节点在代码里是有实现的。
-6. **OP 40 让工程师改的是“方案”而不只是“数字”。** 可增删 BOM 行与工序（AI 多排的划掉、漏排的补上，被删的不进入核价），合计随编辑实时重算——修改的后果当场可见；**低置信工序必须逐条确认才能放行**（方案 §3.4 写的“低置信→强制人工介入”，这里是它的实现而不是承诺）。所有增删与确认都进入 OP 50 的「工程师决策」归档。
-7. **OP 50 是商务决策，不是只读汇总。** 毛利与售价**双向联动**（改哪个另一个跟随，成本由 OP 40 结转、只读）——按成本加成报价和按目标价倒推毛利，工厂两种都要用；工装、交期、假设与风险均可编辑增补。**报价信与成本表不一致时强制拦截签发**并提供一键同步：报价信写 €98.69、成本表写 €90.56 的报价单，绝不能发出公司。
-8. **每条 AI 产出都带依据（basis）与置信度。** BOM 行引用了哪个历史零件、工时按哪条产线校准、哪些字段必须人工确认——可追溯性优先于流畅性。工程师的每次修正都被记录并计数（审批栏实时显示"已修正 N 处"），修正值传入下一阶段——这就是生产版"人工修正回流为评测集"的雏形。
-9. **模型无关抽象层。** 流水线不知道自己在 live 还是 demo mode；换 Gemini/Claude/本地开源模型只动 `llm.py` 一个文件。对德国客户，"可切换到 EU region / on-prem 部署"是签单前提，抽象层是架构的一等公民。
-10. **Demo 缓存 = 真实模型输出的快照**：由 codex-cli 后端（gpt-5.5）通过 `scripts/regen_demo_cache.py` 真实跑一遍流水线生成，四阶段输出过 schema 校验后落盘。每条成本都锚定零件库参考件实绩（basis 字段可逐行核对），不是演示用的假数字。
+1. **One endpoint per stage, rather than one call that runs the whole chain.** The frontend passes the *human-reviewed* (possibly edited) output of stage N into stage N+1, so human-in-the-loop is enforced by the shape of the API and not by UI goodwill. This is the precondition for a manufacturer trusting AI at all: the judgement stays with the engineer.
 
-## 样例输入 / 输出
+2. **Comparable-part retrieval deliberately does not use an LLM.** Engineering similarity is constraint satisfaction plus proximity, and structured feature matching is the channel of hybrid retrieval that most needs to be right first: deterministic, explainable (every match carries its reasons), and runnable offline. A production system layers dense/sparse semantic channels on top (see solution design §3.3).
 
-- 输入：[samples/rfq_email.txt](samples/rfq_email.txt)（Nordwind 询价邮件，250 + 500 件/年）+ [samples/GS-4032_RevB.svg](samples/GS-4032_RevB.svg)(工程图纸，42CrMo4 花键齿轮轴)
-- 中间输出：特征卡（13 项特征 + review flags）→ Top-5 相似件（top 命中 PM-SH-1998，99.4 分；钛合金几何双胞胎显式排除）→ 9 行作业级 BOM → 12 工序 routing（模型自行补入"淬火后校直"工序并标注低置信——正是 HITL 要人看的地方）
-- 最终输出：双数量场景成本分解 + 报价书草稿（€98.69 / €97.38，8 周交付，零工装费——因为 W30×1.5 花键滚刀在库）
+3. **An explicit "geometry twin" exclusion list.** Retrieval surfaces parts that are geometrically near-identical but of a different material class (a titanium prototype shaft, for instance): usable as a routing reference, useless for cost. This is the classic estimating trap, and the system turns it into an explicit output instead of silently getting it right or silently getting it wrong.
 
-## 真实与回放的边界（What's real vs replayed）
+4. **The engineer can overrule retrieval — the hardest edge of HITL.** The algorithm knows whether features match; it does not know that "that batch had a furnace problem" or "we quoted that one below cost to win the account". Those live only in people's heads. So every match can be excluded, **with a mandatory stated reason**; excluded references never reach cost calibration in OP 40, and the reason is archived with the quotation (the "Engineer decisions" panel on OP 50). This step is not about editing numbers — it is about **overruling the evidence base the AI reasoned from**. Retrieval is precisely where domain knowledge beats the algorithm.
 
-| 环节 | demo mode | live mode（任一后端） |
+5. **The feature card is rule-checked, not merely eyeballed.** Material grades must be self-consistent within the card: change the material field and forget the line in "critical requirements", and the system names the contradictory entry and **blocks release**. But it does not pretend to be sure — a legitimate difference (a mating part, a coating, a supplier note) can be released by the engineer confirming it is deliberate, and that confirmation joins the decision archive. The "rule validation" node in the architecture diagram has an implementation behind it.
+
+6. **OP 40 lets the engineer change the plan, not just its numbers.** BOM lines and operations can be added or removed (strike what the AI over-specified, add what it missed; removed lines never reach costing), and totals recalculate as you edit, so the consequence of a change is visible immediately. **Low-confidence operations must be signed off individually before release** — solution design §3.4 states "low confidence → mandatory human intervention", and this is its implementation rather than its promise. Every addition, removal and sign-off enters the "Engineer decisions" archive on OP 50.
+
+7. **OP 50 is a commercial decision, not a read-only summary.** Margin and unit price are **linked in both directions** (edit either and the other follows; unit cost is carried over from OP 40 and stays read-only) — a shop needs both cost-plus quoting and target-price-backwards quoting. Tooling, lead time, assumptions and risks are all editable and extendable. **A disagreement between the quotation letter and the cost sheet hard-blocks sign-off** and offers one-click sync: a quotation whose letter says €98.69 while the cost sheet says €90.56 must never leave the company.
+
+8. **Every AI output carries its basis and its confidence.** Which historical part a BOM line was derived from, which line the cycle times were calibrated against, which fields need human confirmation — traceability ahead of fluency. Every engineer correction is recorded and counted (the approval bar shows "N values corrected" live) and flows into the next stage — the seed of a production system's "human corrections feed the evaluation set".
+
+9. **A provider-agnostic model layer.** The pipeline does not know whether it is live or replaying; switching between Gemini, Claude and a self-hosted open model touches one file, `llm.py`. For German customers, "can be switched to an EU region or on-prem deployment" is a precondition for signing, so this abstraction is a first-class concern rather than a nicety.
+
+10. **The demo cache is a snapshot of real model output**, generated by running the actual pipeline through the codex-cli backend (gpt-5.5) via `scripts/regen_demo_cache.py`, with all four stages schema-validated before they were written. Every cost figure is anchored to a reference part's recorded actuals (check the `basis` field line by line) — these are not decorative numbers.
+
+## Sample input / output
+
+- **Input**: [samples/rfq_email.txt](samples/rfq_email.txt) (a Nordwind enquiry, 250 pcs + 500 pcs/yr) and [samples/GS-4032_RevB.svg](samples/GS-4032_RevB.svg) (engineering drawing of a 42CrMo4 splined gear shaft)
+- **Intermediate**: feature card (13 features + review flags) → Top-5 comparable parts (best match PM-SH-1998 at 99.4; the titanium geometry twin explicitly excluded) → a 9-line operation-level BOM → a 12-operation routing (the model added a "post-hardening straightening" operation on its own initiative and flagged it low-confidence — exactly what HITL exists to put in front of a human)
+- **Output**: cost breakdown for both quantity scenarios plus a quotation letter draft (€98.69 / €97.38, 8-week lead time, no tooling charge — the W30×1.5 spline hob is already in-house)
+
+## What's real vs what's replayed
+
+| Component | Demo mode | Live mode (any backend) |
 |---|---|---|
-| 相似件检索 + 几何双胞胎排除 | ✅ 真实运行（确定性代码，永不回放） | ✅ 真实运行 |
-| 四个 LLM 阶段（图纸/BOM/工艺/报价） | 回放缓存（缓存本身是 live 真跑的快照） | ✅ 真实调用 |
-| HITL 数据流（人审后的 JSON 传入下一阶段） | ✅ 真实传递，但回放输出不会基于修改重算 | ✅ 修改真实影响下游结果 |
-| 生产环境模型与系统 | — | 见方案文档 §3.2（模型可切换，EU region / on-prem） |
+| Comparable-part retrieval + geometry-twin exclusion | ✅ Runs for real (deterministic code, never replayed) | ✅ Runs for real |
+| The four LLM stages (drawing / BOM / routing / quotation) | Replays the cache (which is itself a snapshot of a real live run) | ✅ Real model calls |
+| HITL data flow (reviewed JSON passed into the next stage) | ✅ Genuinely passed on, but a replayed answer does not recompute from it | ✅ Corrections genuinely change downstream results |
+| Production models and systems | — | See solution design §3.2 (swappable models, EU region / on-prem) |
 
-## 目录结构
+## Repository layout
 
 ```
 backend/
-  app.py                  # FastAPI —— 5 个阶段端点 + 静态文件
+  app.py                  # FastAPI — five stage endpoints + static files
   pipeline/
-    llm.py                # 模型抽象层（gemini / claude-cli / codex-cli / demo 缓存）
-    drawing_agent.py      # ① 图纸理解 → 特征卡
-    retrieval.py          # ② 相似件检索（结构化特征匹配，无 LLM）
-    bom_agent.py          # ③ BOM 草稿
-    process_agent.py      # ④ 工艺路线草稿
-    quote_agent.py        # ⑤ 成本汇总 + 报价书
+    llm.py                # model abstraction (gemini / claude-cli / codex-cli / demo cache)
+    drawing_agent.py      # ① drawing understanding → feature card
+    retrieval.py          # ② comparable-part retrieval (structured matching, no LLM)
+    bom_agent.py          # ③ BOM draft
+    process_agent.py      # ④ routing draft
+    quote_agent.py        # ⑤ cost roll-up + quotation letter
   data/
-    parts_db.json         # 13 个历史零件（含成本/工艺实绩）
-    demo_cache/           # demo mode 回放的流水线输出
-  scripts/regen_demo_cache.py  # 用 live 后端真跑一遍并校验后写缓存
-frontend/                 # 审核工作台（英文 UI，可切中文）
-samples/                  # 样例 RFQ + 工程图纸
-docs/solution-design.md   # Part 1-5 完整方案设计
+    parts_db.json         # 13 historical parts with cost and routing actuals
+    demo_cache/           # pipeline output replayed in demo mode
+  scripts/regen_demo_cache.py  # run the real pipeline on a live backend, validate, then write the cache
+frontend/                 # review workbench (English UI, switchable to Chinese)
+samples/                  # sample RFQ + engineering drawing
+docs/solution-design.md   # full Part 1–5 solution design
 ```
 
-## 已知边界（原型的诚实清单）
+## Known boundaries (the prototype's honest list)
 
-- 图纸理解只处理单张单视图图纸；多页 PDF / 装配图 / 手绘扫描件是生产版工程
-- demo mode 下编辑蓝色值会真实传入下一阶段请求，但 LLM 阶段回放的答案不重算——**界面在这三个阶段会明确声明这一点**（检索是确定性代码，永远真算，修正立刻反映在评分与成本可迁移性上）
-- OP 10 支持上传自有图纸（PNG/JPG）+ 直接编辑 RFQ 文本，仅 live 后端可用；demo mode 锁定内置样例并明示原因
-- 撤销栈 / 修改历史面板 / 字段级 schema 校验是生产版工程，原型只做了数字字段的非法输入回退
-- 零件库 13 条为手工构造的演示数据；生产版从 PLM/ERP 同步并做混合检索
-- 成本费率与假设硬编码在 prompt 中；生产版从 ERP 主数据读取
-- 无鉴权、无并发控制——这是一个 challenge 原型，不是产品
+- Drawing understanding handles a single-view drawing only; multi-page PDFs, assembly drawings and scanned hand sketches are production engineering work
+- In demo mode, editing a blue value genuinely travels into the next stage's request, but the replayed LLM answer does not recompute from it — **the interface says so explicitly on those three stages**. Retrieval is deterministic and always computes for real, so corrections show up immediately in scores and cost-transferability
+- OP 10 supports uploading your own drawing (PNG/JPG) and editing the RFQ text directly; this requires a live backend, and demo mode locks to the bundled sample and states why
+- An undo stack, a change-history panel and field-level schema validation are production work; the prototype only reverts invalid input on numeric fields
+- The 13-part library is hand-built demonstration data; a production system syncs it from PLM/ERP and applies hybrid retrieval
+- Cost rates and assumptions are hard-coded in the prompts; a production system reads them from ERP master data
+- No authentication, no concurrency control — this is a challenge prototype, not a product

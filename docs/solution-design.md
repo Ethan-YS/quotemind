@@ -1,340 +1,338 @@
-# PrecisionMotion GmbH · AI 工程平台方案设计
+# PrecisionMotion GmbH — AI Engineering Platform: Solution Design
 
-> IndustrialMind.ai Solution Design Challenge · 候选人：Ethan (Yi Sang)
-> 配套原型：**QuoteMind** —— AI RFQ→Quotation 流水线，可运行代码与说明见
-> https://github.com/Ethan-YS/quotemind（demo 模式无需 API key 或模型配置即可跑通全流程）
-> 文中凡标注"原型已实现"处，均可在该仓库中运行验证。
-
----
-
-## 执行摘要
-
-PrecisionMotion 的 150 名工程师中，约有一半产能消耗在重复性工作上，其中 **RFQ→报价链一项就吃掉约 43 个 FTE**——量最大、流程最标准、历史数据最全，且是唯一同时影响成本与营收的环节。**因此本方案不做"六个 Agent 齐头并进"，而是把报价链作为主线单点突破，工程知识库作为地基同步建设。**
-
-**试点范围**：单一产品线（齿轮箱）× 单一厂区（德国）× RFQ→报价链，0–3 个月。先 **Shadow mode** 用历史 RFQ 盲测，以准确率数据换取工程师信任，再上线。
-
-**目标结果**：报价周期 **5~10 天 → 1~2 天**；关键字段（材料/公差/热处理/证书）人审前召回率 ≥99%；成本估算 MAPE ≤12%；未经授权签发的对外报价数必须为 0。
-
-**三年 ROI**：基准档年化收益 ~€3.04M（≈36 FTE 等效产能），三年净收益 ~€7.2M，**净 ROI ≈ 379%，回本 <12 个月**；保守档净 ROI 仍有 228%。营收上行（响应速度→中标率）**刻意排除在 ROI 之外**，留待试点期用客户自己的报价数据量化。收益**按产能重配讲，不按裁员讲**——在工程师老龄化背景下，这既更真实，也是拿到一线配合的前提。
-
-**为什么附一个可运行原型（QuoteMind）**：方案里最关键的主张——"AI 给建议、人做判断"——写在文档上人人都会写。原型把它变成**三道会真正拦住你的闸门**（特征卡材料自洽、低置信工序强制签核、报价信与成本表一致性），并把工程师对 AI 的每一次否决、增删与修正归档到报价单上。**这不是 demo，是对可信度主张的举证。**
+> IndustrialMind.ai Solution Design Challenge · Candidate: Ethan (Yi Sang)
+> Working prototype: **QuoteMind** — an AI RFQ→Quotation pipeline.
+> Code and setup: https://github.com/Ethan-YS/quotemind (demo mode runs the full flow with no API key or model configuration)
+> Every claim marked *"implemented in the prototype"* can be run and verified in that repository.
+> 中文版：[solution-design.zh.md](solution-design.zh.md)
 
 ---
 
-## Part 1 · 问题分析
+## Executive Summary
 
-### 1.1 先算账：工程师的时间花在哪
+Roughly half of PrecisionMotion's 150-engineer capacity goes into repetitive work, and **the RFQ→quotation chain alone consumes about 43 FTE**. It is the highest-volume, most standardised process, it has the most complete historical data, and it is the only one that moves cost and revenue at the same time. **This proposal therefore does not advance six agents in parallel — it breaks through on the quotation chain as the single main line, with the engineering knowledge base built underneath it as the foundation.**
 
-PrecisionMotion 的数字自己会说话（150 名工程师，按人均年有效工时 1,600h 计）：
+**Pilot scope**: one product line (gearboxes) × one plant (Germany) × the RFQ→quotation chain, months 0–3. **Shadow mode first** — the AI runs blind against historical RFQs and is compared with what the engineers actually produced, so accuracy data earns trust before anything goes live.
 
-| 工作流 | 年度量 | 单件估耗* | 年耗工时 | 折合 FTE |
+**Target outcomes**: quotation lead time **5–10 days → 1–2 days**; pre-review recall on critical fields (material, tolerance, heat treatment, certificates) ≥99%; cost-estimate MAPE ≤12%; and **zero** quotations released without authorised sign-off.
+
+**Three-year ROI**: base case ~€3.04M annual benefit (≈36 FTE of released capacity), ~€7.2M net over three years — **net ROI ≈ 379%, payback <12 months**; the conservative case still returns 228%. Revenue upside (faster response → higher win rate) is **deliberately excluded** from the ROI and left to be measured during the pilot. Benefits are framed as **capacity reallocation, not headcount reduction** — with an ageing engineering workforce that is both more honest and the precondition for getting the shop floor to cooperate.
+
+**Why a working prototype is attached**: the central claim of any such proposal — *AI advises, humans decide* — is easy to write and hard to evidence. QuoteMind turns it into **three gates that will actually stop you** (feature-card material consistency, mandatory sign-off on low-confidence operations, and quotation-letter vs cost-sheet agreement), and archives every override, edit and approval the engineer makes onto the quotation itself. **It is not a demo; it is evidence for the trust claim.**
+
+---
+
+## Part 1 · Problem Analysis
+
+### 1.1 Follow the hours: where does engineering time actually go?
+
+PrecisionMotion's own numbers make the case (150 engineers, 1,600 productive hours per engineer-year):
+
+| Workflow | Annual volume | Est. effort each* | Annual hours | FTE equivalent |
 |---|---|---|---|---|
-| RFQ 处理（审图→BOM→工艺→成本→报价） | 15,000 | 平均 4.6h | ~69,000h | **~43** |
-| 图纸审查（新图+变更图） | 50,000 | 0.5~1h | ~30,000h | ~19 |
-| 工程变更（ECR 影响分析与传播） | 数千 | 2~4h | ~9,000h | ~6 |
-| 找信息（历史图纸/工艺/"问老师傅"） | 每人每天 30~60min | — | ~15,000h | ~9 |
+| RFQ handling (drawing review → BOM → routing → cost → quote) | 15,000 | 4.6 h avg | ~69,000 h | **~43** |
+| Drawing review (new designs + changes) | 50,000 | 0.5–1 h | ~30,000 h | ~19 |
+| Engineering changes (ECR impact analysis and propagation) | thousands | 2–4 h | ~9,000 h | ~6 |
+| Looking for information (past drawings, routings, "ask the veteran") | 30–60 min per engineer per day | — | ~15,000 h | ~9 |
 
-\* RFQ 单件估耗按结构假设：60% 简单件 2h / 30% 中等 6h / 10% 复杂定制 16h，加权 4.6h。所有假设见 Part 4。
+\* RFQ effort is modelled as 60% simple at 2 h / 30% medium at 6 h / 10% complex custom at 16 h → weighted 4.6 h. All assumptions are listed in Part 4.
 
-结论：**约一半的工程产能花在重复性、模式化的工作上**，其中 RFQ 链条一项就吃掉近 1/3 的团队。
+Conclusion: **about half of engineering capacity is spent on repetitive, pattern-based work**, and the RFQ chain alone absorbs close to a third of the team.
 
-### 1.2 三个最疼的业务痛点
+### 1.2 The three business pains that hurt most
 
-1. **报价既慢又贵，还大多打了水漂。** 定制件报价周期通常 5~10 个工作日；而中标率按行业经验取 20~30%（**规划假设，待客户历史数据验证**），意味着 **70~80% 的报价工程投入不产生任何收入**。报价慢本身还压低中标率——客户往往把订单给响应最快的合格供应商。这是"成本"与"营收"两头同时失血的环节。
-2. **知识锁在资深工程师脑子里。** 设计评审依赖 senior、工艺决策靠经验、相似件历史散落在文件夹和邮件里。三个厂区（德/波/中）各自积累、互不流通；资深工程师退休或离职，know-how 直接蒸发。这是德国制造业当前最普遍的结构性风险（人口结构 + 技工缺口）。
-3. **三厂协同没有统一的工程事实源。** 同一零件族在不同厂区可能有不同 BOM 习惯、不同工艺路线、不同成本结构；ECR 的跨厂传播靠人肉。规模本应是优势，现在是摩擦。
+1. **Quoting is slow, expensive, and mostly wasted.** Custom parts typically take 5–10 working days to quote, while win rates run at 20–30% (**a planning assumption, to be validated against the customer's own history**) — meaning **70–80% of quoting effort produces no revenue at all**. Slow quoting also depresses the win rate itself, because buyers tend to award to the fastest qualified supplier. This is the one process bleeding from both the cost and the revenue side.
+2. **Knowledge is locked inside senior engineers.** Design review depends on seniors, process decisions rest on experience, and comparable-part history is scattered across folders and mailboxes. The three plants (Germany, Poland, China) each accumulate their own and share none of it; when a senior engineer retires, the know-how evaporates. This is the defining structural risk in German manufacturing today — demographics plus the skilled-labour gap.
+3. **Three plants with no single engineering source of truth.** The same part family can carry different BOM conventions, different routings and different cost structures per plant, and ECRs propagate across sites by hand. Scale ought to be an advantage; today it is friction.
 
-### 1.3 AI 的 ROI 在哪里最高
+### 1.3 Where AI returns the most
 
-按"量大 × 模式化 × 数据可得 × 直接影响营收"四个维度排序：
+Ranked on four dimensions — volume × how pattern-based × data availability × direct revenue impact:
 
-| 优先级 | 场景 | 判断 |
+| Priority | Use case | Rationale |
 |---|---|---|
-| 🥇 | **RFQ→报价链** | 量最大（15,000/年）、流程最标准、历史数据最全（历史报价+BOM+工艺+实际成本），且直接影响 lead time 和中标率——唯一"降本+增收"双引擎的场景 |
-| 🥈 | **工程知识库** | 所有其他场景的地基；单独也有回报（每人每天找信息的 30~60min） |
-| 🥉 | **设计评审 / DFM** | 价值高但对准确率要求最苛刻，适合在信任建立后上 |
-| 后置 | 根因分析、ECR 自动传播 | 依赖 MES/质量数据打通，放平台期 |
+| 🥇 | **RFQ→quotation chain** | Highest volume (15,000/yr), most standardised process, most complete history (past quotes + BOMs + routings + actual costs), and it drives both lead time and win rate — the only "cut cost *and* win more" engine |
+| 🥈 | **Engineering knowledge base** | The foundation every other use case stands on; pays for itself on the 30–60 min/day search time alone |
+| 🥉 | **Design review / DFM** | High value but the least tolerant of error — introduce it after trust is established |
+| Later | Root-cause analysis, automated ECR propagation | Depend on MES/quality data being connected; park them for the platform phase |
 
-**因此本方案的主线是 RFQ→报价链，知识库作为地基同步建设**——这也是原型所演示的链路。
+**The main line of this proposal is therefore the RFQ→quotation chain, with the knowledge base built underneath it in parallel** — which is exactly the path the prototype demonstrates.
 
 ---
 
-## Part 2 · 方案设计：AI Engineering Platform
+## Part 2 · Solution Design: the AI Engineering Platform
 
-### 2.1 六个核心 Agent
+### 2.1 Six core agents
 
-| Agent | 做什么 | 关键输入 | 关键输出 |
+| Agent | What it does | Key inputs | Key outputs |
 |---|---|---|---|
-| **Drawing Intelligence** | 读懂工程图纸：标题栏、尺寸、公差、GD&T、材料、表面处理、热处理要求 | 图纸 PDF/扫描件/CAD 导出 | 结构化"零件特征卡"（JSON） |
-| **Engineering Knowledge** | 全公司工程知识的检索与问答：历史图纸、BOM、工艺、ECR、失效案例 | PLM/文件系统/邮件归档 | 带证据溯源的答案 + 相似件列表 |
-| **RFQ & Quotation** | 编排整条报价流水线：解析 RFQ→找相似件→估 BOM/工艺→成本分解→报价书草稿 | 客户 RFQ（邮件/门户）+ 图纸 | 报价书草稿 + 成本分解 + 置信度标注 |
-| **BOM Generation** | 基于特征卡 + 相似件历史生成 BOM 草稿 | 特征卡、历史 BOM | BOM 草稿（含替代料建议） |
-| **Process Planning** | 生成工艺路线草稿：工序、设备、装夹、节拍估算 | 特征卡、BOM、各厂设备能力档案 | Routing 草稿（分厂区版本） |
-| **Design Review** | DFM/DFA 检查、公差-成本合理性提示、与相似件的差异对比 | 特征卡、设计规范库 | 评审报告（问题分级 + 依据） |
+| **Drawing Intelligence** | Reads engineering drawings: title block, dimensions, tolerances, GD&T, material, surface and heat treatment | Drawing PDFs / scans / CAD exports | Structured "part feature card" (JSON) |
+| **Engineering Knowledge** | Search and Q&A across company engineering knowledge: past drawings, BOMs, routings, ECRs, failure cases | PLM, file shares, mail archives | Answers with evidence links + comparable-part lists |
+| **RFQ & Quotation** | Orchestrates the quotation chain: parse RFQ → find comparables → estimate BOM/routing → cost breakdown → quotation draft | Customer RFQ (mail/portal) + drawing | Quotation draft + cost breakdown + confidence labels |
+| **BOM Generation** | Drafts the BOM from the feature card plus comparable-part history | Feature card, historical BOMs | BOM draft (incl. alternative-material suggestions) |
+| **Process Planning** | Drafts the routing: operations, equipment, fixturing, cycle-time estimates | Feature card, BOM, per-plant capability profiles | Routing draft (per-plant variants) |
+| **Design Review** | DFM/DFA checks, tolerance-vs-cost sanity flags, deltas against comparable parts | Feature card, design standards library | Review report (graded findings + evidence) |
 
-设计原则：**Agent 之间共享同一个知识层，而不是各建各的数据孤岛**；每个 Agent 的输出都带证据链接（哪张历史图、哪条工艺记录支持了这个建议）。
+Design principle: **agents share one knowledge layer rather than each building its own silo**, and every agent output carries evidence links — which historical drawing, which routing record supports this suggestion.
 
-### 2.2 数据源
+### 2.2 Data sources
 
-- **PLM**（图纸、CAD、BOM、ECR）——工程事实源
-- **ERP**（物料主数据、供应商价格、历史订单成本）——商业事实源
-- **MES**（实际工时、良率、设备负荷）——现场事实源，用于校准工艺与成本估算
-- 历史报价单与中标记录（估价校准 + 中标率分析）
-- 非结构化存量：工艺文件、评审纪要、邮件里的 RFQ、老师傅的检查清单
+- **PLM** (drawings, CAD, BOMs, ECRs) — the engineering source of truth
+- **ERP** (material master, supplier prices, historical order costs) — the commercial source of truth
+- **MES** (actual hours, yield, machine load) — the shop-floor source of truth, used to calibrate routing and cost estimates
+- Historical quotations and win/loss records (cost calibration + win-rate analysis)
+- The unstructured backlog: process documents, review minutes, RFQs buried in mailboxes, veterans' personal checklists
 
-### 2.3 用户工作流：报价工程师的一天（Before / After)
+### 2.3 User workflow: a day in the life of a quotation engineer
 
-**Before**（今天，5~10 天）：
-读邮件收 RFQ → 人工看图 → 凭记忆/翻文件夹找相似件 → 手建 BOM → 找工艺同事排 routing → Excel 算成本 → 写报价 → 审批 → 发出
+**Before** (today, 5–10 days):
+read the RFQ in mail → study the drawing manually → recall or dig for comparable parts → build the BOM by hand → chase a process colleague for the routing → cost it in Excel → write the quote → get approval → send
 
-**After**（目标，数小时~2 天）：
-1. RFQ 进入平台，Drawing Intelligence 自动出"零件特征卡"——工程师**核对**而不是抄录
-2. Knowledge Agent 给出 Top-N 相似件（附历史 BOM/工艺/实际成本）——工程师**选择与调整**而不是回忆
-3. BOM / Routing / 成本草稿逐级生成，每一级都是**人审后再进下一级**
-4. 报价书草稿一键生成，工程师终审签发
+**After** (target, hours to 2 days):
+1. The RFQ enters the platform and Drawing Intelligence produces a feature card — the engineer **verifies** instead of transcribing
+2. The Knowledge Agent surfaces Top-N comparable parts with their BOMs, routings and actual costs — the engineer **selects and adjusts** instead of recalling
+3. BOM, routing and cost drafts are produced stage by stage, and **each stage is reviewed by a human before the next one runs**
+4. The quotation draft is generated in one step; the engineer gives final sign-off
 
-**工程师角色从"手工生产者"变成"审核者与决策者"——AI 给建议，不做判断。**
+**The engineer's role shifts from manual producer to reviewer and decision-maker — AI advises, it does not decide.**
 
-### 2.4 预期输出物
+### 2.4 Expected outputs
 
-零件特征卡 · 相似件对比报告 · BOM 草稿 · 分厂区工艺路线草稿 · 成本分解表 · 报价书 · 设计评审报告 · 知识问答（带引用）。所有输出物：结构化、可编辑、可追溯。
+Part feature card · comparable-part comparison · BOM draft · per-plant routing draft · cost breakdown · quotation · design review report · knowledge Q&A with citations. Every output is structured, editable and traceable.
 
 ---
 
-## Part 3 · 技术架构
+## Part 3 · Technical Architecture
 
-### 3.1 分层架构
+### 3.1 Architecture
 
-单个阶段的真实数据流——**每个 Agent 的产出都必须穿过规则校验和人工门，才能成为下一阶段的输入**：
+The real data flow through a single stage — **no agent output becomes the next stage's input without passing rule validation and a human gate**:
 
 ```mermaid
 flowchart LR
-    IN[上一阶段已审核输出] --> AG[阶段 Agent<br/>Drawing / BOM / Process / Quotation]
-    KB[(知识层<br/>结构化检索 + 语义检索 + 证据溯源)] --> AG
-    MD[模型层<br/>多模态 / 文本 / Embedding<br/>可切换 · EU region · on-prem] --> AG
-    AG --> RC{规则校验<br/>schema · 尺寸闭环 · 成本可迁移性}
-    RC -->|通过, 带置信度| GATE{{人工审核门<br/>高: 快速审核队列 · 中: 逐项确认 · 低: 强制介入}}
-    RC -->|矛盾/缺字段| GATE
-    GATE -->|工程师签发, 含修正| NEXT[下一阶段 Agent]
-    GATE -->|修正与否决| LOG[(决策归档<br/>回流评测集)]
-    LOG -.评测与迭代.-> MD
+    IN[Reviewed output of previous stage] --> AG[Stage agent<br/>Drawing / BOM / Process / Quotation]
+    KB[(Knowledge layer<br/>structured + semantic retrieval + evidence index)] --> AG
+    MD[Model layer<br/>multimodal / text / embedding<br/>swappable · EU region · on-prem] --> AG
+    AG --> RC{Rule validation<br/>schema · dimensional closure · cost transferability}
+    RC -->|pass, with confidence| GATE{{Human gate<br/>high: fast-review queue · medium: field-level confirm · low: mandatory}}
+    RC -->|contradiction / missing field| GATE
+    GATE -->|engineer signs off, incl. corrections| NEXT[Next stage agent]
+    GATE -->|corrections and rejections| LOG[(Decision archive<br/>feeds the evaluation set)]
+    LOG -.evaluation and iteration.-> MD
 ```
 
-系统全景：
+System view:
 
 ```mermaid
 flowchart TB
-    subgraph 接入层
-        A1[Email / 客户门户 RFQ 接入] --- A2[Web 工作台] --- A3[PLM/ERP 插件]
+    subgraph Intake
+        A1[Email / customer portal RFQ intake] --- A2[Web workbench] --- A3[PLM/ERP plug-ins]
     end
-    subgraph 编排层["Agent 编排层（状态机 + 检查点）"]
-        O[RFQ Orchestrator] --> G1[Drawing Agent] --> H1{{HITL 门}}
-        H1 --> G2[Knowledge / Retrieval] --> H2{{HITL 门}}
-        H2 --> G3[BOM Agent] --> G4[Process Agent] --> H3{{HITL 门}}
-        H3 --> G5[Quotation Agent] --> H4{{最终签发}}
+    subgraph Orchestration["Agent orchestration (state machine + checkpoints)"]
+        O[RFQ Orchestrator] --> G1[Drawing Agent] --> H1{{HITL gate}}
+        H1 --> G2[Knowledge / Retrieval] --> H2{{HITL gate}}
+        H2 --> G3[BOM Agent] --> G4[Process Agent] --> H3{{HITL gate}}
+        H3 --> G5[Quotation Agent] --> H4{{Final sign-off}}
     end
-    subgraph 知识层
-        K1[(向量库<br/>混合检索+重排)] --- K2[(结构化库<br/>零件/BOM/工艺/成本)] --- K3[证据溯源索引]
+    subgraph Knowledge
+        K1[(Vector store<br/>hybrid retrieval + rerank)] --- K2[(Structured store<br/>parts / BOM / routing / cost)] --- K3[Evidence index]
     end
-    subgraph 模型层["模型层（模型无关抽象）"]
-        M1[多模态 LLM · 图纸理解] --- M2[文本 LLM · 生成与推理] --- M3[Embedding · 检索]
+    subgraph Models["Model layer (provider-agnostic)"]
+        M1[Multimodal LLM · drawing understanding] --- M2[Text LLM · generation and reasoning] --- M3[Embeddings · retrieval]
     end
-    subgraph 集成层
+    subgraph Integration
         I1[ERP · SAP] --- I2[PLM · Teamcenter/Windchill] --- I3[MES]
     end
-    接入层 --> 编排层
-    编排层 <--> 知识层
-    知识层 --> 模型层
-    知识层 <--> 集成层
+    Intake --> Orchestration
+    Orchestration <--> Knowledge
+    Knowledge --> Models
+    Knowledge <--> Integration
     H4 --> I1
 ```
 
-### 3.2 模型选型
+### 3.2 Model selection
 
-- **多模态 LLM**（图纸/文档理解）+ **文本 LLM**（生成、推理）+ **Embedding 模型**（检索）分工使用，按任务难度分档调用（简单抽取用轻量模型，复杂推理用旗舰模型）控制成本。
-- **模型无关抽象层**：Gemini / Claude / GPT / 开源本地模型可切换。这不是技术洁癖——工程图纸是**知识产权与商业秘密**，德国客户对其去向极度敏感，"可切换到 EU region 或 on-prem 开源模型部署"是签单的前提条件，必须是架构的一等公民（治理细节见 §3.6）。
-  *（原型已实现：同一条流水线通过一个环境变量在 Gemini API / Claude CLI / Codex CLI 三种后端间切换，业务代码零改动。）*
-- 图纸理解不迷信端到端 LLM：**vision LLM 抽取 + 规则校验** 双保险——尺寸闭环检查、标题栏字段完整性、材料牌号自洽性。
-  *（原型已实现其中的材料牌号自洽校验：抽取值与关键要求、特征规格三处交叉比对，检出矛盾即拦截放行。）*
+- A **multimodal LLM** (drawings and documents), a **text LLM** (generation and reasoning) and an **embedding model** (retrieval), each used for what it is good at, and tiered by task difficulty — lightweight models for simple extraction, flagship models for hard reasoning — to keep cost under control.
+- **A provider-agnostic abstraction layer**: Gemini / Claude / GPT / self-hosted open models are interchangeable. This is not architectural fastidiousness — engineering drawings are **intellectual property and trade secrets**, German customers are acutely sensitive about where they go, and "can be switched to an EU region or an on-prem open model" is a precondition for signing, so it has to be a first-class concern (governance detail in §3.6).
+  *(Implemented in the prototype: one environment variable switches the same pipeline between Gemini API, Claude CLI and Codex CLI backends with zero change to business code.)*
+- Drawing understanding does not rely on an end-to-end LLM alone: **vision extraction plus rule validation** — dimensional closure, title-block completeness, material-grade consistency.
+  *(Implemented in the prototype: material-grade consistency is cross-checked across the extracted material field, the critical requirements and the feature specs; a contradiction blocks release.)*
 
-### 3.3 知识库
+### 3.3 Knowledge base
 
-- **混合检索**：dense embedding + 稀疏检索（BM25/关键词）+ 重排（rerank），工程语料里型号/牌号/标准号这类精确 token 极多，纯向量检索必吃亏。
-- **结构化优先**：零件特征、材料、公差范围先走结构化过滤，再做语义排序——工程检索是"约束满足 + 相似度"，不是纯语义。
-  *（原型已实现结构化通道：确定性打分、每条匹配附可读理由、材料等级不同者标为"仅几何参考、成本不可迁移"——报价估算最经典的坑被变成显式输出。）*
-- **证据溯源**：每条知识记录来源（哪张图/哪份工艺/哪个 ECR），Agent 输出必须引用。
-- 冷启动策略：先灌历史报价 + 已完结项目（数据最全、最闭环），不追求一次性全量。
+- **Hybrid retrieval**: dense embeddings + sparse retrieval (BM25/keyword) + reranking. Engineering text is dense with exact tokens — part numbers, material grades, standard references — and pure vector search will lose them.
+- **Structure first**: filter on part features, material and tolerance ranges before semantic ranking. Engineering retrieval is *constraint satisfaction plus similarity*, not similarity alone.
+  *(Implemented in the prototype: the structured channel scores deterministically, attaches a readable reason to every match, and marks parts of a different material class as "geometry reference only — cost does not transfer" — the classic estimating trap turned into an explicit output.)*
+- **Evidence provenance**: every knowledge record keeps its source (which drawing, which routing, which ECR), and agent outputs must cite it.
+- Cold-start strategy: load historical quotations and closed projects first — the most complete and self-validating data — rather than attempting everything at once.
 
-### 3.4 Agent 编排与 HITL
+### 3.4 Agent orchestration and human-in-the-loop
 
-- 编排用**显式状态机**（LangGraph 风格）而非自由 agent 漫游：每个阶段有输入 schema、输出 schema、检查点，可回放、可审计——制造业客户要的是可控性，不是魔法。
-- **HITL 三分法**（按置信度决定审核的**强度**，而不是要不要审核）：
-  - 高置信 → 进入快速审核 / 批量确认队列（不是自动放行）
-  - 中置信 → 字段级人工逐项确认后方可进入下一阶段
-  - 低置信 / 检出矛盾 → 强制人工处理，AI 只列证据不给结论
-  - **无论哪一档，对外报价、正式 BOM 与工艺发布，始终需要授权人员签发**——置信度调节的是工作量，不是授权。
-- 人的每次修正都被记录，**形成带版本的评测用例与候选训练数据**；只有经审批、脱敏后的数据才可进入模型训练。**不做在线自动学习**——工程师的修改不会自动改变模型行为，客户的工程数据也不会因为"用了系统"就默认成为训练语料。这在德国制造业是合同前提，不是可选项。
-- **系统随使用变准**的机制是：评测集扩充 → 规则库补充 → 受控的数据迭代，三者都有人审与版本，可回滚、可审计。
-- 原则一句话：**AI 给建议，人做判断；判断权始终在工程师手里。**
+- Orchestration is an **explicit state machine** (LangGraph-style) rather than free-roaming agents: every stage has an input schema, an output schema and a checkpoint, so runs are replayable and auditable. Manufacturing customers want controllability, not magic.
+- **Three-tier HITL** — confidence determines the *intensity* of review, never whether review happens:
+  - High confidence → fast-review / batch-confirm queue (**not** automatic release)
+  - Medium confidence → field-level confirmation before the next stage runs
+  - Low confidence or detected contradiction → mandatory human handling; the AI presents evidence and withholds a conclusion
+  - **In every tier, outbound quotations and released BOMs and routings always require sign-off by an authorised person** — confidence modulates workload, not authority.
+- Every human correction is captured as a **versioned evaluation case and a training candidate**; only approved, anonymised data ever enters model training. **There is no online self-learning** — an engineer's edit does not silently change model behaviour, and customer engineering data does not become training material by default just because the system was used. In German manufacturing this is a contractual precondition, not an option.
+- **"The system gets better with use"** therefore means: a growing evaluation set, a growing rule base, and controlled data iteration — all three human-reviewed, versioned, reversible and auditable.
+- In one line: **AI advises, humans decide; the judgement stays with the engineer.**
 
-**这三条在原型里是被执行的规则，不是写在文档上的承诺**——配套原型 QuoteMind 实现了三道闸门，任一不满足就无法放行：
+**In the prototype these are enforced rules, not stated intentions.** QuoteMind implements three gates, and failing any of them blocks release:
 
-| 闸门 | 触发条件 | 人的动作 | 对应上面哪一条 |
+| Gate | Trigger | What the engineer does | Which principle it enforces |
 |---|---|---|---|
-| 特征卡自洽 | 主材料与关键要求/特征规格中的牌号不一致 | 修正条目，或声明"该差异是有意的"（配对件、镀层） | 检出矛盾 → 强制介入 |
-| 低置信工序签核 | 模型自评 `confidence: low` 的工序 | 逐条确认，或删除该工序 | 低置信 → 强制介入 |
-| 报价信一致性 | 报价信中的价格与成本表不符 | 一键同步，或手改报价信 | 判断权在人，但系统替人兜底 |
+| Feature-card consistency | The material field and a critical requirement or feature spec name different grades | Correct the lines, or declare the difference deliberate (mating part, coating) | Contradiction → mandatory intervention |
+| Low-confidence sign-off | Operations the model itself rated `confidence: low` | Confirm each one, or delete the operation | Low confidence → mandatory intervention |
+| Quotation-letter agreement | Prices in the letter disagree with the cost sheet | Sync in one click, or edit the letter | Humans decide, but the system catches them |
 
-第三道闸门防的不是 AI 的幻觉，是**人自己的疏漏**——工程师改了毛利忘了改信，这类错误 AI 不会犯，人才会。真正的人机协作是双向的。
+The third gate does not guard against AI hallucination — it guards against **human oversight**. An engineer changes the margin and forgets the letter; the AI would never make that mistake, a person will. Real human-AI collaboration runs in both directions.
 
-### 3.5 3D CAD：与二维图纸互为校验（Phase 2 起）
+### 3.5 3D CAD: cross-checking the 2D drawings (from Phase 2)
 
-客户每年 30,000 个 CAD 模型，与 50,000 张图纸是**同一批零件的两种表达**——只做二维等于放着一半的事实源不用。二维先行是因为报价链的输入现实中就是图纸（客户 RFQ 附的是 PDF），但 CAD 通道必须在 Phase 2 补上：
+The customer produces 30,000 CAD models a year against 50,000 drawings — **two representations of the same parts**. Working only in 2D leaves half the source of truth unused. 2D comes first because the quotation chain's real input *is* the drawing (customers attach PDFs to RFQs), but the CAD channel has to follow in Phase 2:
 
-- **几何特征抽取**：STEP / JT / 原生 CAD 解析 B-Rep，自动得出体积、质量、包络、孔槽与可制造特征——这些量今天靠工程师目测估算，是 BOM 毛坯与工时估算误差的主要来源。
-- **2D↔3D 交叉校验**：图纸标注与模型几何不一致时告警。这是制造业最贵的错误之一，且**只有系统同时看两者才可能发现**——人分两次看两份文件，天然发现不了。
-- **CAD 相似件检索**：几何相似度补足特征相似度，并做跨厂几何去重（同一零件在三厂重复建模是真实存在的浪费）。
-- 价值定位：**CAD 通道提升的是估算精度，二维通道提升的是响应速度**——先要速度，再要精度，顺序不能反。
+- **Geometric feature extraction**: parse B-Rep from STEP / JT / native CAD to derive volume, mass, envelope, holes, slots and manufacturable features automatically. Engineers estimate these by eye today, and that is the dominant error source in stock-size and cycle-time estimates.
+- **2D↔3D cross-validation**: flag where drawing annotation and model geometry disagree. This is one of the most expensive classes of manufacturing error, and **only a system looking at both at once can catch it** — a person reading two documents in two sittings structurally cannot.
+- **CAD-based comparable search**: geometric similarity complements feature similarity, and enables cross-plant geometry deduplication (the same part modelled three times at three plants is real, measurable waste).
+- Positioning: **the CAD channel buys estimation accuracy; the 2D channel buys response speed.** Speed first, then accuracy — not the other way round.
 
-### 3.6 安全、权限与数据治理
+### 3.6 Security, permissions and data governance
 
-德国工业客户的采购问卷里，这一节的权重不低于功能：
+In a German industrial procurement questionnaire this section carries no less weight than functionality:
 
-| 关注点 | 方案 |
+| Concern | Approach |
 |---|---|
-| 权限继承 | **不新建一套权限体系**，继承 PLM/ERP 既有的项目与角色授权；AI 检索结果按调用者权限过滤，检索不得成为越权通道 |
-| 跨厂可见性 | 德/波/中三厂按零件族与项目分域隔离；**跨厂知识复用默认走"脱敏工艺参数"而非原图**，原图跨境需显式授权并留痕 |
-| 身份与访问 | 企业 SSO（SAML/OIDC）+ RBAC，与 HR 系统联动的离职即时回收 |
-| 加密 | 传输 TLS 1.3、静态加密；图纸与模型产物同等对待 |
-| 部署与数据主权 | EU region 托管或 on-prem 开源模型；**客户数据不出客户边界**是可选的部署形态，不是承诺 |
-| 训练隔离 | 客户数据默认不进训练；进训练需单独书面授权 + 脱敏 + 版本记录（见 §3.4） |
-| 留存与删除 | 可配置留存期，支持按项目/客户的删除请求，删除覆盖向量库与缓存 |
-| 审计 | 每次 AI 建议、每次人工修正、每次签发全量留痕，含模型版本号——**报价争议时能回答"当时是谁、依据什么、用哪个模型版本批的"** |
+| Permission inheritance | **Do not build a second permission system.** Inherit existing PLM/ERP project and role authorisation; AI results are filtered by the caller's permissions, so retrieval never becomes a privilege-escalation path |
+| Cross-plant visibility | Germany / Poland / China segregated by part family and project; **cross-plant reuse defaults to anonymised process parameters rather than source drawings**, and moving source drawings across borders requires explicit authorisation and leaves a record |
+| Identity and access | Enterprise SSO (SAML/OIDC) + RBAC, with immediate revocation driven by the HR system |
+| Encryption | TLS 1.3 in transit, encryption at rest; model artefacts are treated with the same care as drawings |
+| Deployment and data residency | EU-region hosting or on-prem open models; **"customer data never leaves the customer boundary" is an available deployment shape**, not merely a promise |
+| Training isolation | Customer data is excluded from training by default; inclusion requires separate written authorisation, anonymisation and version records (see §3.4) |
+| Retention and deletion | Configurable retention, per-project and per-customer deletion requests honoured across the vector store and caches |
+| Audit | Every AI suggestion, every human correction and every sign-off is logged with the model version — so that when a quotation is disputed, the answer to *"who approved this, on what basis, with which model version"* exists |
 
-> 术语上不要混：工程图纸的核心是**知识产权与商业秘密**，适用保密与出口管制口径；**GDPR 仅在数据含个人信息时适用**（如工程师姓名出现在图纸签署栏、审批记录中）。两者的控制手段不同，混为一谈会让客户的法务觉得供应商不专业。
+> A terminology note that matters: engineering drawings are primarily an **intellectual-property and trade-secret** concern, governed by confidentiality and export-control practice. **GDPR applies only where personal data is present** — an engineer's name in a title block or an approval record. The controls differ, and conflating the two signals to a customer's legal team that the supplier has not done this before.
 
-### 3.7 系统集成
+### 3.7 System integration
 
-- ERP（德企大概率 SAP）/ PLM / MES 走**读为主、写审慎**：读取主数据与历史，写回只在人工确认后（如报价书归档、BOM 草稿推入 PLM 走正式审批流）。
-- 集成分级落地：Phase 1 用文件/导出对接即可跑通试点，**不把项目卡死在 IT 集成排期上**；Phase 2 起上 API 级集成。
+- ERP (SAP, most likely, for a German manufacturer), PLM and MES are integrated **read-first, write-cautiously**: read master data and history freely; write back only after human confirmation (archiving a released quotation, pushing a BOM draft into the PLM's formal approval flow).
+- Integration is staged: Phase 1 runs the pilot on file/export exchange, so **the project is not held hostage by the IT integration backlog**; API-level integration lands from Phase 2.
 
 ---
 
-## Part 4 · 商业测算（3 年 ROI）
+## Part 4 · Business Case (3-year ROI)
 
-### 4.1 假设（全部摊开）
+### 4.1 Assumptions (all of them, stated)
 
-| # | 假设 | 取值 | 依据 |
+| # | Assumption | Value | Basis |
 |---|---|---|---|
-| A1 | 工程师全成本（德/波/中混合） | €85k/人年 | 德国 €110k+ / 波兰 ~€55k / 中国 ~€45k 加权 |
-| A2 | 人均年有效工时 | 1,600h | 行业惯例 |
-| A3 | RFQ 平均工程耗时 | 4.6h（60% 简单 2h / 30% 中等 6h / 10% 复杂 16h） | 保守估计 |
-| A4 | AI 对 RFQ 链的提效 | 保守 40% / 基准 55% / 乐观 65% | 试点期实测校准 |
-| A5 | 找信息时间 | 每人每天 45min，AI 省一半 | 知识管理行业通用测算 |
-| A6 | 年营收（测中标率敏感性用） | ~€450M | 2,500 人零部件企业典型规模 |
-| A7 | 平台总拥有成本 | 3 年合计 ~€1.9M（首年含实施 €0.9M，后续 €0.5M/年） | 含订阅、实施、集成、内部推动人力 |
+| A1 | Fully loaded engineer cost (Germany/Poland/China blended) | €85k per year | Germany €110k+ / Poland ~€55k / China ~€45k, weighted |
+| A2 | Productive hours per engineer-year | 1,600 h | Industry convention |
+| A3 | Average engineering effort per RFQ | 4.6 h (60% simple 2 h / 30% medium 6 h / 10% complex 16 h) | Conservative |
+| A4 | AI efficiency gain on the RFQ chain | conservative 40% / base 55% / optimistic 65% | To be calibrated by pilot measurement |
+| A5 | Information-search time | 45 min per engineer per day, halved by AI | Standard knowledge-management benchmark |
+| A6 | Platform total cost of ownership | ~€1.9M over 3 years (year 1 incl. implementation €0.9M, then €0.5M/yr) | Subscription, implementation, integration and internal change effort |
 
-### 4.2 收益（基准档）
+### 4.2 Benefits (base case)
 
-| 收益流 | 计算 | 年化 |
+| Benefit stream | Calculation | Annualised |
 |---|---|---|
-| RFQ 链提效 | 69,000h × 55% × (€85k/1,600h) | **€2.0M** |
-| 找信息提效 | 15,000h × 50% × 时薪 | €0.4M |
-| 图纸审查/ECR 提效（30% 保守） | 39,000h × 30% × 时薪 | €0.6M |
-| **年化合计** | | **~€3.04M** |
+| RFQ chain efficiency | 69,000 h × 55% × (€85k / 1,600 h) | **€2.0M** |
+| Information-search efficiency | 15,000 h × 50% × hourly rate | €0.4M |
+| Drawing review / ECR efficiency (30%, conservative) | 39,000 h × 30% × hourly rate | €0.6M |
+| **Annual total** | | **~€3.04M** |
 
-**3 年（基准档）：收益 ~€9.1M vs 成本 ~€1.9M → 净收益 ~€7.2M。**
-口径写清楚以免歧义：**净 ROI =（收益−成本）/ 成本 ≈ 379%**；**收益成本比 ≈ 4.8×**；**回本周期 < 12 个月**。
+**Three years, base case: ~€9.1M benefit against ~€1.9M cost → ~€7.2M net.**
+Stated precisely to avoid ambiguity: **net ROI = (benefit − cost) / cost ≈ 379%**; **benefit-to-cost ratio ≈ 4.8×**; **payback < 12 months**.
 
-保守档同样逐项摊开（时薪 €53.12/h = €85k ÷ 1,600h）：
+The conservative case, derived the same way (hourly rate €53.12 = €85k ÷ 1,600 h):
 
-| 收益流 | 保守假设 | 年化 |
+| Benefit stream | Conservative assumption | Annualised |
 |---|---|---|
-| RFQ 链提效 | 69,000h × **40%** | €1.47M |
-| 找信息提效 | 15,000h × **25%**（基准的一半） | €0.20M |
-| 图纸审查 / ECR | 39,000h × **20%** | €0.41M |
-| **年化合计** | | **€2.08M** |
+| RFQ chain efficiency | 69,000 h × **40%** | €1.47M |
+| Information-search efficiency | 15,000 h × **25%** (half the base case) | €0.20M |
+| Drawing review / ECR | 39,000 h × **20%** | €0.41M |
+| **Annual total** | | **€2.08M** |
 
-**保守档 3 年收益 ~€6.2M vs 成本 ~€1.9M → 净 ROI ≈ 228%（收益成本比 ≈ 3.3×）——保守档也成立。**
+**Conservative case: ~€6.2M over three years against ~€1.9M cost → net ROI ≈ 228% (benefit-to-cost ≈ 3.3×). The case holds even here.**
 
-> 口径说明（防重复计算）：RFQ 链的 69,000h 已包含报价场景下的审图工时；表中"图纸审查 30,000h"指**不经过报价流程**的新品设计图与工程变更图，两者互斥不重叠。
+> No double counting: the 69,000 h in the RFQ chain already includes drawing review performed *for quoting*. The separate 30,000 h "drawing review" line covers new-design and engineering-change drawings that **do not pass through the quotation process**. The two are mutually exclusive.
 
-### 4.3 报价周期与营收上行（**明确排除在 ROI 之外**）
+### 4.3 Lead time and revenue upside (**explicitly excluded from the ROI**)
 
-- 报价周期：**5~10 天 → 1~2 天**（简单件当天）。
-- 响应速度是中标率的已知强变量，但**本方案不为它估值**：中标率作用于"年度有效报价金额"，而该基数、当前基线中标率、响应时间弹性、以及可承接产能，都必须用客户自己的数据测定。任何在拿到这些数据前给出的营收增量，都是不可信的。
-- 因此：**ROI 主表只用成本口径，营收上行放在试点期量化**——用年度报价金额 × 基线中标率 × 响应时间弹性，并以可用产能封顶。ROI 用最硬的口径也能自洽，这是刻意的。
+- Quotation lead time: **5–10 days → 1–2 days** (same-day for simple parts).
+- Response speed is a known strong driver of win rate, but **this proposal does not put a number on it.** Win rate applies to *annual quoted value*, and that base — along with the current baseline win rate, the response-time elasticity and the available production capacity — has to be measured from the customer's own data. Any revenue figure produced before those are known is not credible.
+- Therefore: **the ROI table uses cost savings only, and revenue upside is quantified during the pilot** — annual quoted value × baseline win rate × response-time elasticity, capped by available capacity. The ROI is designed to stand on the hardest possible basis; that is deliberate.
 
-> 假设标注：文中"行业典型中标率 20~30%"为**规划假设，非客户实测值**，试点第一周即用其历史报价与中标记录替换。
+### 4.4 How to talk about headcount (this matters in Germany)
 
-### 4.4 人员口径（对德企要讲对）
-
-**不按裁员讲，按产能重配讲**：基准档年化 €3.04M 折合约 **36 FTE 等效产能**（RFQ 链 ~24 · 知识检索 ~5 · 图纸与 ECR ~7），投向新品开发、客户定制项目与工艺改进——这些是现在"想做没人做"的事。工程师老龄化 + 技工缺口背景下，"用 AI 放大现有团队"比"用 AI 替换团队"既更真实，也更容易拿到工程师群体的配合（采纳率本身就是 ROI 的前提）。
+**Frame it as capacity reallocation, not redundancy.** The base case's €3.04M annualised benefit corresponds to roughly **36 FTE of released capacity** (RFQ chain ~24 · knowledge search ~5 · drawing and ECR ~7), redirected into new product development, customer-specific projects and process improvement — the work that everyone wants to do and nobody currently has time for. Against a backdrop of an ageing engineering workforce and a skilled-labour shortage, "use AI to amplify the team you have" is both more truthful than "use AI to replace them" and far more likely to earn the cooperation of the engineers themselves — and adoption is a precondition for the ROI, not a detail.
 
 ---
 
-## Part 5 · 实施路线图
+## Part 5 · Roadmap
 
-### Phase 1（0–3 月）· 试点与信任建立
+### Phase 1 (months 0–3) · Pilot and trust-building
 
-- 范围：**单一产品线（齿轮箱）× 单一厂区（德国）× RFQ→报价链**
-- 动作：灌入该产品线 2~3 年历史数据（报价、BOM、工艺、实际成本）；**Shadow mode 先行**——AI 对历史 RFQ 盲测，与工程师实际产出对比，用准确率数据说话再上线
-- 出口指标（Gate）——**普通字段与关键字段分开考核**，关键字段错一次的代价远高于普通字段：
+- Scope: **one product line (gearboxes) × one plant (Germany) × the RFQ→quotation chain**
+- Actions: load 2–3 years of that product line's history (quotations, BOMs, routings, actual costs); **run shadow mode first** — the AI works historical RFQs blind and is compared against what the engineers actually produced, so the accuracy data makes the case before go-live
+- Exit gates — **critical fields and ordinary fields are measured separately**, because one error in a critical field costs far more than one in an ordinary field:
 
-| 指标 | 目标 | 为什么是它 |
+| Metric | Target | Why this one |
 |---|---|---|
-| 关键字段召回率（材料/公差/热处理/证书） | ≥ 99%（人审前） | 这几项错了直接报错价或做错件 |
-| 普通字段抽取准确率 | ≥ 95%（人审前） | 影响效率，不影响正确性 |
-| 相似件 Top-5 命中率 | ≥ 80% | 成本校准基准的质量 |
-| 成本估算 MAPE（对已中标实际成本） | ≤ 12% | 报价可信度的最终检验 |
-| 报价周期缩短 | ≥ 50% | 业务侧最直观的兑现 |
-| 人工修改率（AI 草稿被改动的比例） | 逐月下降 | 系统是否真的在变准 |
-| **未经授权签发的对外报价数** | **必须为 0** | 控制项，不是效率项——出现一次即暂停推广 |
-- 同期：数据摸底与知识库地基（为 Phase 2 铺路）
+| Critical-field recall (material / tolerance / heat treatment / certificates) | ≥ 99% (before human review) | An error here means the wrong price or the wrong part |
+| Ordinary-field extraction accuracy | ≥ 95% (before human review) | Affects efficiency, not correctness |
+| Comparable-part Top-5 hit rate | ≥ 80% | Quality of the cost-calibration basis |
+| Cost-estimate MAPE (against actual cost of won orders) | ≤ 12% | The ultimate test of quotation credibility |
+| Quotation lead-time reduction | ≥ 50% | The most visible business outcome |
+| Human edit rate (share of AI drafts changed) | Declining month over month | Whether the system is genuinely improving |
+| **Quotations released without authorised sign-off** | **Must be 0** | A control, not an efficiency metric — a single occurrence pauses the rollout |
 
-### Phase 2（3–9 月）· 部门级推广
+- In parallel: data assessment and knowledge-base foundations, to clear the path for Phase 2
 
-- RFQ 链推广到全部产品线与德/波两厂；BOM Agent 与 Process Planning Agent 正式上线
-- 知识库开放全员问答（Engineering Knowledge Agent）
-- ERP/PLM API 级集成替换 Phase 1 的文件对接
-- 建立 AI 使用规范与审计流程（谁批准了什么、依据是什么）
+### Phase 2 (months 3–9) · Departmental rollout
 
-### Phase 3（9–24 月）· 企业级 AI 工程平台
+- Extend the RFQ chain to all product lines and to both the German and Polish plants; the BOM Agent and Process Planning Agent go into production
+- Open the knowledge base to all engineers (Engineering Knowledge Agent)
+- Replace Phase 1's file exchange with API-level ERP/PLM integration
+- Add the 3D CAD channel (§3.5): geometric feature extraction and 2D↔3D cross-validation
+- Establish AI usage policy and audit process — who approved what, on what basis
 
-- Design Review Agent、ECR 影响分析上线；中国厂区接入
-- 跨厂 know-how 复用：三厂工艺对比、最优实践迁移
-- 平台化：权限体系、多语言（德/英/波/中）、模型持续评测与迭代闭环
-- 从"工具"变"基础设施"：新工程师入职第一天就在 AI 辅助的工作流里工作
+### Phase 3 (months 9–24) · Enterprise AI engineering platform
 
-### 风险与对策
+- Design Review Agent and ECR impact analysis go live; the China plant is connected
+- Cross-plant know-how reuse: routing comparison across the three plants, migration of best practice
+- Platform maturity: permission model, multi-language (DE/EN/PL/ZH), continuous model evaluation and iteration loop
+- From tool to infrastructure: a new engineer's first day already happens inside an AI-assisted workflow
 
-| 风险 | 对策 |
+### Risks and mitigations
+
+| Risk | Mitigation |
 |---|---|
-| 历史数据脏/散 | Phase 1 只选数据最全的产品线；数据清洗算在实施内，不甩给客户 |
-| 工程师抵触/不信任 | Shadow mode 用数据自证；HITL 让判断权留在人手里；把资深工程师聘为"AI 教练"而非被替代者 |
-| 图纸理解准确率不达标 | 置信度分档 + 规则校验兜底；不达标的类别退回纯人工，不硬上 |
-| 数据主权与商业秘密 | EU region / on-prem 部署选项；图纸不出客户边界；训练隔离与审计留痕（见 §3.6）|
-| **模型漂移 / 版本变更** | 模型版本与评测集绑定，升级前跑回归；报价留痕含模型版本号，可回滚可追责 |
-| **历史成本不可迁移** | 材料等级、工艺路线、产线变更都会让历史成本失效；系统显式标注"仅几何参考"，并允许工程师否决参考件（原型已实现）|
-| IT 集成拖期 | Phase 1 文件对接先跑通价值，集成与价值验证解耦 |
+| Historical data is dirty or scattered | Phase 1 targets the product line with the most complete data; data cleansing is part of implementation, not handed back to the customer |
+| Engineer resistance or distrust | Shadow mode lets data make the argument; HITL keeps judgement with people; senior engineers are engaged as "AI coaches" rather than being displaced |
+| Drawing understanding misses accuracy targets | Confidence tiers plus rule validation as a backstop; categories that fail the gate revert to fully manual rather than being forced through |
+| Data residency and trade secrets | EU-region / on-prem deployment options; drawings never leave the customer boundary; training isolation and audit trails (see §3.6) |
+| **Model drift / version changes** | Model versions are bound to evaluation sets and regression-tested before upgrade; quotation records carry the model version, so decisions can be rolled back and accounted for |
+| **Historical cost is not always transferable** | A change of material grade, routing or production line invalidates historical cost; the system marks such matches "geometry reference only" and lets the engineer overrule a reference part outright (implemented in the prototype) |
+| IT integration slips | Phase 1 proves value on file exchange, decoupling integration from value validation |
 
 ---
 
-## 附 · 原型范围说明（QuoteMind）
+## Appendix · Prototype scope (QuoteMind)
 
-原型实现主线的端到端，五道工序对应本方案的报价链：**样例 RFQ + 工程图纸 → 特征卡抽取（vision LLM）→ 相似件检索（结构化特征匹配，即混合检索中的结构化通道）→ BOM 与工艺路线草稿 → 成本分解与报价书草稿**。
+The prototype implements the main line end to end, with five operations mapping onto the quotation chain in this proposal: **sample RFQ + engineering drawing → feature-card extraction (vision LLM) → comparable-part retrieval (structured feature matching, i.e. the structured channel of hybrid retrieval) → BOM and routing drafts → cost breakdown and quotation letter**.
 
-每一道工序都是一个人工审核门，工程师能做的**不止是改数字**：
+Every operation is a human review gate, and the engineer can do considerably **more than edit numbers**:
 
-| 工序 | 工程师的动作 | 对应设计主张 |
+| Operation | What the engineer can do | Which design claim it evidences |
 |---|---|---|
-| OP 20 图纸审查 | 修正任一抽取值；系统校验材料牌号自洽性并拦截矛盾 | §3.3 结构化优先 · §3.4 检出矛盾强制介入 |
-| OP 30 相似零件 | **否决**算法选中的参考件（须写明理由），被排除者不进入成本校准 | §3.3 领域知识 > 相似度算法 |
-| OP 40 BOM 与工艺 | 增删 BOM 行与工序、实时看到成本与机时重算、逐条签核低置信工序 | §3.4 三分法 · §2.3 人从生产者变审核者 |
-| OP 50 报价 | 毛利与售价双向定价、增补假设与风险、报价信一致性硬拦截 | §2.4 输出物可编辑可追溯 |
+| OP 20 Drawing Review | Correct any extracted value; the system checks material-grade consistency and blocks contradictions | §3.3 structure first · §3.4 contradiction → mandatory intervention |
+| OP 30 Similar Parts | **Overrule** the algorithm's chosen reference parts (with a stated reason); excluded parts never reach cost calibration | §3.3 domain knowledge beats similarity scoring |
+| OP 40 BOM & Routing | Add or remove BOM lines and operations, watch cost and machine time recalculate live, sign off each low-confidence operation | §3.4 three-tier HITL · §2.3 producer → reviewer |
+| OP 50 Quotation | Price two ways (margin ⇄ price), add assumptions and risks, hard block on letter/cost-sheet disagreement | §2.4 outputs are editable and traceable |
 
-所有否决、增删、签核与修正进入 **OP 50「工程师决策」归档**，随报价单同行——这是 §3.4 "人的每次修正回流为评测集" 的雏形。
+Every override, addition, deletion, sign-off and correction lands in the **"Engineer decisions" archive on OP 50** and travels with the quotation — the seed of §3.4's "human corrections feed the evaluation set".
 
-**边界说明（诚实清单）**：相似件检索是确定性代码，任何模式下都真实运行；四个 LLM 阶段在 demo 模式下回放真实跑测的缓存快照，界面在这些阶段会明确声明"不会基于你的修正重算"，切换 live 后端（Gemini / Claude CLI / Codex CLI）即可看到修正端到端传导。零件库为手工构造的 13 条演示数据；费率与假设硬编码在 prompt 中，生产版从 ERP 主数据读取。
-
-架构决策、运行方式与完整已知边界见仓库 README。
+**Honest boundaries.** Comparable-part retrieval is deterministic code and runs for real in every mode. The four LLM stages replay a cached snapshot of a real model run in demo mode, and the interface says so on those stages ("the replayed answer does not recompute from your corrections"); switching to a live backend (Gemini / Claude CLI / Codex CLI) shows corrections propagating end to end. The parts library is 13 hand-built demonstration records; rates and assumptions are hard-coded in the prompts, where a production system would read them from ERP master data.

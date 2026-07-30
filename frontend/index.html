@@ -1101,8 +1101,7 @@ function rQuote(){
       `<div class="qty">${s.qty} pcs ${s.qty===250?t('s50_initial'):t('s50_annual')}</div>
        <div class="price">€ ${ed(0,`quote.scenarios.${i}.unit_price_eur`,'',n=>n.toFixed(2))}<small> ${t('s50_pc')}</small></div>
        <div class="cost-line">${t('s50_cost')} €${s.unit_cost_eur.toFixed(2)} · ${
-         lang==='zh'?`售价毛利 ${ed(0,`quote.scenarios.${i}.margin_pct`)}%`
-                    :`margin ${ed(0,`quote.scenarios.${i}.margin_pct`)}% on price`}</div>
+         t('s50_margin')(ed(0,`quote.scenarios.${i}.margin_pct`))}</div>
        <div class="cost-line" style="color:#7a7562;font-size:10px">${t('s50_price_lab')}</div>
        <div class="stackbar">${bar}</div><div class="sb-legend">${leg}</div>`));
   });

@@ -161,6 +161,17 @@ td.mono{font-family:var(--mono);font-size:12px}
 .match .cost{font-family:var(--mono);font-size:11px;text-align:right;line-height:1.7;white-space:nowrap}
 .transfer{font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:1px 5px;border:1px solid var(--green);color:var(--green);border-radius:2px}
 .transfer.no{border-color:var(--red);color:var(--red)}
+.match.excluded{background:#faf2f0;opacity:.75}
+.match.excluded h4{text-decoration:line-through;text-decoration-color:var(--red)}
+.excl-btn{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;
+  border:1px solid var(--line);background:none;padding:3px 9px;cursor:pointer;color:#5b5748;margin-top:8px}
+.excl-btn:hover{border-color:var(--red);color:var(--red)}
+.match.excluded .excl-btn{border-color:var(--green);color:var(--green)}
+.match.excluded .excl-btn:hover{background:var(--green);color:#fff}
+.excl-reason{font-family:var(--mono);font-size:11px;width:100%;max-width:54ch;margin-top:9px;
+  padding:6px 9px;border:1.5px solid var(--red);background:#fff;color:var(--ink)}
+.excl-reason:focus{outline:none;box-shadow:0 0 0 2px var(--red-soft)}
+.excl-reason::placeholder{color:#b3aa96}
 /* quote */
 .scenarios{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
 .scn{border:1.5px solid var(--ink);background:#fffdf8;padding:16px 18px;animation:rise .4s both}
@@ -258,7 +269,14 @@ en:{
   s30_plant:'plant', s30_life:'pcs lifetime',
   s30_ct:'COST TRANSFERABLE', s30_geo:'GEOMETRY ONLY',
   s30_twins:'⚑ Geometry twins excluded from costing',
-  s30_hint:'Approving accepts this reference set as the cost-calibration basis. OP 40 drafts the BOM and process routing grounded in these references.',
+  s30_hint:'Approving accepts this reference set as the cost-calibration basis. Exclude any reference you know is unrepresentative — excluded parts never reach OP 40.',
+  excl_btn:'Exclude', incl_btn:'Re-include',
+  excl_reason_ph:'Why is this reference unrepresentative? (archived with the quote)',
+  excl_reason_required:'Please state why each excluded reference is unrepresentative — the reason is archived with the quote.',
+  excl_all:'At least one reference part must remain — the cost calibration has no basis otherwise.',
+  excl_note:n=>`${n} excluded by the engineer`,
+  audit_title:'Engineer decisions — archived with the quote',
+  audit_excl:'Excluded references', audit_edit:'Corrected values',
   s30_load:'Drafting BOM and process routing — grounding every line in reference actuals',
   s40_t:'BOM & Routing',
   s40_d:'Manufacturing BOM and process routing drafts. Every line cites its basis — which historical part or rule it was calibrated against. Edit any blue value.',
@@ -331,7 +349,14 @@ zh:{
   s30_plant:'工厂', s30_life:'件累计',
   s30_ct:'成本可迁移', s30_geo:'仅几何参考',
   s30_twins:'⚑ 几何双胞胎——已从成本校准中排除',
-  s30_hint:'批准即接受该参考集作为成本校准基准。OP 40 将基于这些参考起草 BOM 与工艺路线。',
+  s30_hint:'批准即接受该参考集作为成本校准基准。你知道不具代表性的参考件请排除——被排除的零件不会进入 OP 40。',
+  excl_btn:'排除', incl_btn:'重新纳入',
+  excl_reason_ph:'为什么这个参考件不具代表性？（随报价单归档）',
+  excl_reason_required:'请为每个被排除的参考件写明理由——该理由将随报价单归档。',
+  excl_all:'至少需保留一个参考件——否则成本校准失去基准。',
+  excl_note:n=>`工程师已排除 ${n} 个`,
+  audit_title:'工程师决策——随报价单归档',
+  audit_excl:'已排除的参考件', audit_edit:'已修正的值',
   s30_load:'正在起草 BOM 与工艺路线——每一行都锚定参考件实绩',
   s40_t:'BOM 与工艺',
   s40_d:'制造 BOM 与工艺路线草稿。每一行都注明依据——按哪个历史零件或规则校准。蓝色值均可编辑。',
@@ -362,8 +387,8 @@ let lang = localStorage.getItem('qm-lang') || 'en';
 const t = k => (L[lang][k] ?? L.en[k] ?? k);
 
 /* ================= state & helpers ================= */
-const S = { rfq:null, card:null, matches:null, bom:null, routing:null, quote:null,
-            source:'sample', uploadId:null, uploadUrl:null, edits:{} };
+const S = { rfq:null, card:null, matches:null, matchesUsed:null, bom:null, routing:null, quote:null,
+            source:'sample', uploadId:null, uploadUrl:null, edits:{}, excluded:{} };
 let current = 0, done = -1;   // done = highest approved stage index
 let MODE = 'demo';
 
@@ -474,6 +499,7 @@ function approveBar(hint, onNext, opts={}){
   const btn = el('button','stamp-btn',t('approve'));
   if(opts.disabled){ btn.disabled = true; btn.title = opts.disabledReason || ''; }
   btn.onclick = async ()=>{
+    if(opts.validate){ const problem = opts.validate(); if(problem){ alert(problem); return; } }
     btn.disabled=true; slamStamp(btn); await wait(450);
     try{ await onNext(); }
     catch(err){ alert(`${t('stage_fail')}: ${err.message}`); render(); }
@@ -619,18 +645,36 @@ function rCard(){
 function rMatches(){
   const m=S.matches, stage=$('#stage');
   stage.innerHTML = stageHead(t('s30_t'),'30', t('s30_d')(m.searched));
+  const nExcl = Object.keys(S.excluded).length;
   const list = el('div','panel');
-  list.innerHTML = `<div class="panel-cap"><span>${t('s30_top')}</span><span>${t('s30_score')}</span></div>` +
+  list.innerHTML = `<div class="panel-cap"><span>${t('s30_top')}${nExcl?` · ${t('excl_note')(nExcl)}`:''}</span><span>${t('s30_score')}</span></div>` +
     m.matches.map(x=>{
-      const p=x.part, lo=p.last_order;
-      return `<div class="match">
+      const p=x.part, lo=p.last_order, ex=S.excluded[p.part_no];
+      const off = ex!==undefined;
+      return `<div class="match${off?' excluded':''}">
         <div class="score">${x.score}<small>${t('score')}</small></div>
         <div><h4>${esc(p.name)}</h4><div class="pn">${esc(p.part_no)} · ${esc(p.material)} · ${t('s30_plant')} ${esc(p.plant)} · ${esc(p.qty_produced_total)} ${t('s30_life')}</div>
-          <div class="reasons">${x.reasons.map(esc).join(' &nbsp;·&nbsp; ')}</div></div>
+          <div class="reasons">${x.reasons.map(esc).join(' &nbsp;·&nbsp; ')}</div>
+          ${off?`<input class="excl-reason" data-pn="${esc(p.part_no)}" value="${esc(ex)}" placeholder="${esc(t('excl_reason_ph'))}">`:''}</div>
         <div class="cost">${lo.year}: €${lo.unit_cost_eur.toFixed(2)}/pc @ ${lo.qty}<br>
-          <span class="transfer ${x.cost_transferable?'':'no'}">${x.cost_transferable?t('s30_ct'):t('s30_geo')}</span></div>
+          <span class="transfer ${x.cost_transferable?'':'no'}">${x.cost_transferable?t('s30_ct'):t('s30_geo')}</span><br>
+          <button class="excl-btn" data-pn="${esc(p.part_no)}">${off?t('incl_btn'):t('excl_btn')}</button></div>
       </div>`; }).join('');
   stage.appendChild(list);
+
+  // Engineer overrides the algorithm: domain knowledge the data does not carry.
+  list.querySelectorAll('.excl-btn').forEach(b=>{
+    b.onclick = ()=>{
+      const pn = b.dataset.pn;
+      if(S.excluded[pn]!==undefined) delete S.excluded[pn];
+      else S.excluded[pn] = '';
+      render();
+      document.querySelector(`.excl-reason[data-pn="${CSS.escape(pn)}"]`)?.focus();
+    };
+  });
+  list.querySelectorAll('.excl-reason').forEach(i=>{
+    i.oninput = ()=>{ S.excluded[i.dataset.pn] = i.value; };
+  });
 
   if(m.geometry_twins_excluded?.length){
     const fb = el('div','flag-box');
@@ -641,13 +685,20 @@ function rMatches(){
 
   stage.appendChild(approveBar(t('s30_hint'),
     async ()=>{
+      // Only the engineer-approved reference set reaches costing.
+      S.matchesUsed = {...m, matches: m.matches.filter(x=>S.excluded[x.part.part_no]===undefined)};
       loadingView(t('s30_load'), t('chk_bomproc'));
       const t0=Date.now();
-      S.bom = await api('/stage/bom',{card:S.card,matches:S.matches});
-      S.routing = await api('/stage/process',{card:S.card,bom:S.bom,matches:S.matches});
+      S.bom = await api('/stage/bom',{card:S.card,matches:S.matchesUsed});
+      S.routing = await api('/stage/process',{card:S.card,bom:S.bom,matches:S.matchesUsed});
       await wait(Math.max(0, 1900-(Date.now()-t0)));
       done=Math.max(done,2); current=3; render();
-    }));
+    },
+    {validate:()=>{
+      if(m.matches.every(x=>S.excluded[x.part.part_no]!==undefined)) return t('excl_all');
+      if(Object.values(S.excluded).some(r=>!r.trim())) return t('excl_reason_required');
+      return null;
+    }}));
 }
 
 /* ---- OP40 BOM + routing ---- */
@@ -689,7 +740,7 @@ function rBomRouting(){
     async ()=>{
       loadingView(t('s40_load'), t('chk_quote'));
       const t0=Date.now();
-      S.quote = await api('/stage/quote',{rfq_text:S.rfq,card:S.card,bom:S.bom,routing:S.routing,matches:S.matches});
+      S.quote = await api('/stage/quote',{rfq_text:S.rfq,card:S.card,bom:S.bom,routing:S.routing,matches:S.matchesUsed||S.matches});
       await wait(Math.max(0, 1500-(Date.now()-t0)));
       done=Math.max(done,3); current=4; render();
     }, {editable:true}));
@@ -729,6 +780,19 @@ function rQuote(){
       <ul class="note-list" style="color:#6b1710">${q.risks.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
     </div>`;
   stage.appendChild(ar);
+
+  const excl = Object.entries(S.excluded), edits = Object.entries(S.edits);
+  if(excl.length || edits.length){
+    const au = el('div','panel');
+    au.innerHTML = `<div class="panel-cap"><span>${t('audit_title')}</span></div>
+      <div class="panel-body">
+        ${excl.length?`<p class="src-lab">${t('audit_excl')}</p><ul class="note-list">${
+          excl.map(([pn,r])=>`<li><b>${esc(pn)}</b> — ${esc(r)}</li>`).join('')}</ul>`:''}
+        ${edits.length?`<p class="src-lab" style="margin-top:${excl.length?'12px':'0'}">${t('audit_edit')}</p><ul class="note-list">${
+          edits.map(([p,v])=>`<li><span class="mono">${esc(p)}</span>: ${esc(v.from)} → <b>${esc(v.to)}</b></li>`).join('')}</ul>`:''}
+      </div>`;
+    stage.appendChild(au);
+  }
 
   const lt = el('div','panel');
   lt.innerHTML = `<div class="panel-cap"><span>${t('s50_letter')}</span><span>${t('s50_editable')}</span></div>

@@ -224,6 +224,8 @@ en:{
   upload_fail:'Upload failed',
   edits:n=>`✎ ${n} value${n>1?'s':''} corrected by the engineer — corrections feed the next stage`,
   was:'was',
+  load_live:'LIVE call in progress — a reasoning/vision stage can take 1–3 minutes. Do not reload; each click is a real model call.',
+  stage_fail:'Stage failed',
   s20_t:'Drawing Review',
   s20_d:'AI-extracted part feature card. Blue values are drafts — click any of them to correct; your corrections feed every later stage. Confidence chips route attention.',
   s20_id:'Identification', s20_ft:'Extracted features', s20_items:'items',
@@ -290,6 +292,8 @@ zh:{
   upload_fail:'上传失败',
   edits:n=>`✎ 工程师已修正 ${n} 处——修正将传入下一阶段`,
   was:'原值',
+  load_live:'LIVE 真实调用中——推理/视觉阶段可能需要 1–3 分钟。请勿刷新；每次点击都是一次真实模型调用。',
+  stage_fail:'阶段执行失败',
   s20_t:'图纸审查',
   s20_d:'AI 抽取的零件特征卡。蓝色值为草稿——点击即可修正；你的修正会传入后续所有阶段。置信度标签指示注意力方向。',
   s20_id:'零件识别', s20_ft:'抽取特征', s20_items:'项',
@@ -442,7 +446,11 @@ function approveBar(hint, onNext, opts={}){
   const bar = el('div','approve');
   const btn = el('button','stamp-btn',t('approve'));
   if(opts.disabled){ btn.disabled = true; btn.title = opts.disabledReason || ''; }
-  btn.onclick = async ()=>{ btn.disabled=true; slamStamp(btn); await wait(450); await onNext(); };
+  btn.onclick = async ()=>{
+    btn.disabled=true; slamStamp(btn); await wait(450);
+    try{ await onNext(); }
+    catch(err){ alert(`${t('stage_fail')}: ${err.message}`); render(); }
+  };
   bar.appendChild(btn);
   bar.appendChild(el('span','edit-badge',''));
   bar.lastChild.id = 'editBadge';
@@ -456,6 +464,7 @@ function loadingView(msg){
   const box = el('div','loading');
   box.appendChild(el('div','scan',esc(msg)));
   box.appendChild(el('div','bar','<i></i>'));
+  if(MODE==='live') box.appendChild(el('p','src-note',esc(t('load_live')))).style.marginTop='16px';
   stage.appendChild(box);
 }
 

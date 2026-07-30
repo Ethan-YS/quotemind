@@ -172,6 +172,24 @@ td.mono{font-family:var(--mono);font-size:12px}
   padding:6px 9px;border:1.5px solid var(--red);background:#fff;color:var(--ink)}
 .excl-reason:focus{outline:none;box-shadow:0 0 0 2px var(--red-soft)}
 .excl-reason::placeholder{color:#b3aa96}
+/* line-level actions on BOM / routing */
+tr.row-off{background:#faf2f0;opacity:.6}
+tr.row-off td:not(:last-child){text-decoration:line-through;text-decoration-color:var(--red)}
+tr.row-added td:first-child{box-shadow:inset 3px 0 0 var(--green)}
+.tag-added{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;color:var(--green);
+  border:1px solid var(--green);padding:0 4px;border-radius:2px;margin-left:6px;white-space:nowrap}
+.act-btn{font-family:var(--mono);font-size:9.5px;border:1px solid var(--line);background:none;
+  padding:2px 7px;cursor:pointer;color:#5b5748;white-space:nowrap}
+.act-btn:hover{border-color:var(--red);color:var(--red)}
+tr.row-off .act-btn:hover{border-color:var(--green);color:var(--green)}
+.ack-btn{font-family:var(--mono);font-size:9px;border:1px solid var(--red);background:none;
+  padding:1px 5px;cursor:pointer;color:var(--red);margin-left:5px;white-space:nowrap}
+.ack-btn.on{border-color:var(--green);color:var(--green)}
+.add-row{font-family:var(--mono);font-size:10.5px;border:1.5px dashed var(--line);background:none;
+  padding:6px 14px;cursor:pointer;color:#5b5748;margin-top:10px}
+.add-row:hover{border-color:var(--blue);color:var(--blue)}
+.totals{font-family:var(--mono);font-size:11px;color:var(--ink)}
+.totals b{color:var(--blue)}
 /* quote */
 .scenarios{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
 .scn{border:1.5px solid var(--ink);background:#fffdf8;padding:16px 18px;animation:rise .4s both}
@@ -277,6 +295,15 @@ en:{
   excl_note:n=>`${n} excluded by the engineer`,
   audit_title:'Engineer decisions — archived with the quote',
   audit_excl:'Excluded references', audit_edit:'Corrected values',
+  act_remove:'Remove', act_restore:'Restore', th_act:'Action', tag_added:'ENGINEER',
+  add_bom:'+ Add BOM line', add_op:'+ Add operation',
+  bom_total:n=>`BOM total <b>€ ${n.toFixed(2)}</b>/pc`,
+  rt_total:(c,s)=>`Machine time <b>${c.toFixed(1)} min</b>/pc · setup <b>${s} min</b>`,
+  ack_btn:'Confirm', ack_done:'Confirmed ✓',
+  need_ack:'Low-confidence operations must be confirmed by the engineer before release:\n',
+  need_lines:'At least one BOM line and one routing operation must remain.',
+  audit_removed:'Removed lines', audit_added:'Engineer-added lines', audit_ack:'Low-confidence operations confirmed',
+  new_item:'(new item — describe it)', new_op:'(new operation — describe it)',
   s30_load:'Drafting BOM and process routing — grounding every line in reference actuals',
   s40_t:'BOM & Routing',
   s40_d:'Manufacturing BOM and process routing drafts. Every line cites its basis — which historical part or rule it was calibrated against. Edit any blue value.',
@@ -357,6 +384,15 @@ zh:{
   excl_note:n=>`工程师已排除 ${n} 个`,
   audit_title:'工程师决策——随报价单归档',
   audit_excl:'已排除的参考件', audit_edit:'已修正的值',
+  act_remove:'删除', act_restore:'恢复', th_act:'操作', tag_added:'工程师新增',
+  add_bom:'+ 增加 BOM 行', add_op:'+ 增加工序',
+  bom_total:n=>`BOM 合计 <b>€ ${n.toFixed(2)}</b>/件`,
+  rt_total:(c,s)=>`机时合计 <b>${c.toFixed(1)} 分钟</b>/件 · 调机 <b>${s} 分钟</b>`,
+  ack_btn:'确认', ack_done:'已确认 ✓',
+  need_ack:'低置信工序须经工程师确认后方可放行：\n',
+  need_lines:'BOM 与工艺至少各需保留一行。',
+  audit_removed:'已删除的行', audit_added:'工程师新增的行', audit_ack:'已确认的低置信工序',
+  new_item:'（新增物料——请填写）', new_op:'（新增工序——请填写）',
   s30_load:'正在起草 BOM 与工艺路线——每一行都锚定参考件实绩',
   s40_t:'BOM 与工艺',
   s40_d:'制造 BOM 与工艺路线草稿。每一行都注明依据——按哪个历史零件或规则校准。蓝色值均可编辑。',
@@ -388,7 +424,8 @@ const t = k => (L[lang][k] ?? L.en[k] ?? k);
 
 /* ================= state & helpers ================= */
 const S = { rfq:null, card:null, matches:null, matchesUsed:null, bom:null, routing:null, quote:null,
-            source:'sample', uploadId:null, uploadUrl:null, edits:{}, excluded:{} };
+            source:'sample', uploadId:null, uploadUrl:null, edits:{}, excluded:{},
+            removed:{bom:{},rt:{}}, added:{bom:[],rt:[]}, ackLow:{} };
 let current = 0, done = -1;   // done = highest approved stage index
 let MODE = 'demo';
 
@@ -446,7 +483,24 @@ document.addEventListener('blur', e=>{
   }
   el.classList.add('saved');              // green flash = stored in the draft
   setTimeout(()=>el.classList.remove('saved'), 550);
+  refreshTotals();                        // edited minutes/costs roll up immediately
 }, true);
+
+/* live roll-up so the engineer sees the consequence of an edit at once */
+const bomKept = l => !S.removed.bom[l.pos];
+const rtKept  = o => !S.removed.rt[o.op];
+function refreshTotals(){
+  const bt = document.getElementById('bomTotal');
+  if(bt && S.bom) bt.innerHTML = t('bom_total')(
+    S.bom.bom_lines.filter(bomKept).reduce((a,l)=>a+(+l.est_unit_cost_eur||0)*(+l.qty||1),0));
+  const rt = document.getElementById('rtTotal');
+  if(rt && S.routing){
+    const ops = S.routing.routing.filter(rtKept);
+    rt.innerHTML = t('rt_total')(
+      ops.reduce((a,o)=>a+(+o.cycle_min_per_pc||0),0),
+      ops.reduce((a,o)=>a+(+o.setup_min||0),0));
+  }
+}
 
 async function api(path, body){
   const r = await fetch('/api'+path, body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {});
@@ -707,22 +761,66 @@ function rBomRouting(){
   stage.innerHTML = stageHead(t('s40_t'),'40',t('s40_d'));
 
   const bom = el('div','panel');
-  bom.innerHTML = `<div class="panel-cap"><span>${t('s40_bom')}</span><span>${t('s40_raw')}: ${esc(b.raw_material.stock_size)} · ${t('s40_gross')} ${esc(b.raw_material.gross_weight_kg)} kg</span></div>
-    <div class="panel-body"><table><thead><tr><th>${t('th_pos')}</th><th style="width:22%">${t('th_item')}</th><th style="width:30%">${t('th_spec')}</th><th>${t('th_qty2')}</th><th>${t('th_unit')}</th><th>${t('th_basis')}</th></tr></thead>
-    <tbody>${b.bom_lines.map((l,i)=>`<tr><td class="mono">${l.pos}</td><td>${esc(l.item)}</td><td class="mono">${ed(0,`bom.bom_lines.${i}.spec`)}</td>
+  bom.innerHTML = `<div class="panel-cap"><span>${t('s40_bom')} · <span class="totals" id="bomTotal"></span></span><span>${t('s40_raw')}: ${esc(b.raw_material.stock_size)} · ${t('s40_gross')} ${esc(b.raw_material.gross_weight_kg)} kg</span></div>
+    <div class="panel-body"><table><thead><tr><th>${t('th_pos')}</th><th style="width:20%">${t('th_item')}</th><th style="width:28%">${t('th_spec')}</th><th>${t('th_qty2')}</th><th>${t('th_unit')}</th><th>${t('th_basis')}</th><th>${t('th_act')}</th></tr></thead>
+    <tbody>${b.bom_lines.map((l,i)=>{
+      const off=!bomKept(l);
+      return `<tr class="${off?'row-off':''}${l._added?' row-added':''}"><td class="mono">${l.pos}</td>
+      <td>${ed(0,`bom.bom_lines.${i}.item`)}${l._added?`<span class="tag-added">${t('tag_added')}</span>`:''}</td>
+      <td class="mono">${ed(0,`bom.bom_lines.${i}.spec`)}</td>
       <td class="num">${l.qty} ${esc(l.unit)}</td><td class="num">${ed(0,`bom.bom_lines.${i}.est_unit_cost_eur`)}</td>
-      <td style="font-size:11px;color:#5b5748">${esc(l.basis)}</td></tr>`).join('')}</tbody></table></div>`;
+      <td style="font-size:11px;color:#5b5748">${esc(l.basis)}</td>
+      <td><button class="act-btn" data-kind="bom" data-key="${l.pos}">${off?t('act_restore'):t('act_remove')}</button></td></tr>`;}).join('')}</tbody></table>
+    <button class="add-row" data-add="bom">${t('add_bom')}</button></div>`;
   stage.appendChild(bom);
 
   const rt = el('div','panel');
-  rt.innerHTML = `<div class="panel-cap"><span>${t('s40_rt')}</span><span>${t('s40_plant')}: ${esc(r.recommended_plant.plant)}</span></div>
-    <div class="panel-body"><table><thead><tr><th>${t('th_op')}</th><th style="width:34%">${t('th_operation')}</th><th>${t('th_wc')}</th><th>${t('th_setup')}</th><th>${t('th_cycle')}</th><th>${t('th_conf')}</th><th>${t('th_basis')}</th></tr></thead>
-    <tbody>${r.routing.map((o,i)=>`<tr><td class="mono">${o.op}</td><td>${esc(o.operation)}</td><td class="mono">${esc(o.workcenter)}</td>
+  rt.innerHTML = `<div class="panel-cap"><span>${t('s40_rt')} · <span class="totals" id="rtTotal"></span></span><span>${t('s40_plant')}: ${esc(r.recommended_plant.plant)}</span></div>
+    <div class="panel-body"><table><thead><tr><th>${t('th_op')}</th><th style="width:30%">${t('th_operation')}</th><th>${t('th_wc')}</th><th>${t('th_setup')}</th><th>${t('th_cycle')}</th><th>${t('th_conf')}</th><th>${t('th_basis')}</th><th>${t('th_act')}</th></tr></thead>
+    <tbody>${r.routing.map((o,i)=>{
+      const off=!rtKept(o), low=o.confidence==='low', ack=!!S.ackLow[o.op];
+      return `<tr class="${off?'row-off':''}${o._added?' row-added':''}"><td class="mono">${o.op}</td>
+      <td>${ed(0,`routing.routing.${i}.operation`)}${o._added?`<span class="tag-added">${t('tag_added')}</span>`:''}</td>
+      <td class="mono">${ed(0,`routing.routing.${i}.workcenter`)}</td>
       <td class="num">${ed(0,`routing.routing.${i}.setup_min`)}</td><td class="num">${ed(0,`routing.routing.${i}.cycle_min_per_pc`)}</td>
-      <td><span class="chip ${o.confidence}">${o.confidence[0].toUpperCase()}</span></td>
-      <td style="font-size:11px;color:#5b5748">${esc(o.basis)}</td></tr>`).join('')}</tbody></table>
+      <td style="white-space:nowrap"><span class="chip ${o.confidence}">${o.confidence[0].toUpperCase()}</span>${
+        low&&!off?`<button class="ack-btn${ack?' on':''}" data-op="${o.op}">${ack?t('ack_done'):t('ack_btn')}</button>`:''}</td>
+      <td style="font-size:11px;color:#5b5748">${esc(o.basis)}</td>
+      <td><button class="act-btn" data-kind="rt" data-key="${o.op}">${off?t('act_restore'):t('act_remove')}</button></td></tr>`;}).join('')}</tbody></table>
+    <button class="add-row" data-add="rt">${t('add_op')}</button>
     <p style="font-family:var(--mono);font-size:11px;margin-top:10px;color:#4c483a">${t('s40_rationale')}: ${esc(r.recommended_plant.why)}</p></div>`;
   stage.appendChild(rt);
+
+  // Engineer edits the plan itself, not just its numbers: strike a line the AI
+  // invented, or add the operation it missed.
+  stage.querySelectorAll('.act-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      const store = btn.dataset.kind==='bom' ? S.removed.bom : S.removed.rt;
+      const k = btn.dataset.key;
+      if(store[k]) delete store[k]; else store[k] = true;
+      render();
+    };
+  });
+  stage.querySelectorAll('.ack-btn').forEach(btn=>{
+    btn.onclick = ()=>{ const k=btn.dataset.op; S.ackLow[k] = !S.ackLow[k]; render(); };
+  });
+  stage.querySelectorAll('.add-row').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(btn.dataset.add==='bom'){
+        const pos = Math.max(0, ...b.bom_lines.map(l=>+l.pos||0)) + 10;
+        b.bom_lines.push({pos, item:t('new_item'), spec:'', qty:1, unit:'pc',
+                          est_unit_cost_eur:0, basis:t('tag_added'), _added:true});
+        S.added.bom.push(pos);
+      } else {
+        const op = Math.max(0, ...r.routing.map(o=>+o.op||0)) + 10;
+        r.routing.push({op, operation:t('new_op'), workcenter:'', setup_min:0,
+                        cycle_min_per_pc:0, basis:t('tag_added'), confidence:'high', _added:true});
+        S.added.rt.push(op);
+      }
+      render();
+    };
+  });
+  refreshTotals();
 
   const notes = el('div','panel');
   notes.innerHTML = `<div class="panel-cap"><span>${t('s40_crit')}</span></div>
@@ -740,10 +838,21 @@ function rBomRouting(){
     async ()=>{
       loadingView(t('s40_load'), t('chk_quote'));
       const t0=Date.now();
-      S.quote = await api('/stage/quote',{rfq_text:S.rfq,card:S.card,bom:S.bom,routing:S.routing,matches:S.matchesUsed||S.matches});
+      // Only the surviving lines are costed.
+      const bomUsed = {...b, bom_lines: b.bom_lines.filter(bomKept)};
+      const rtUsed  = {...r, routing:   r.routing.filter(rtKept)};
+      S.quote = await api('/stage/quote',{rfq_text:S.rfq,card:S.card,bom:bomUsed,routing:rtUsed,matches:S.matchesUsed||S.matches});
       await wait(Math.max(0, 1500-(Date.now()-t0)));
       done=Math.max(done,3); current=4; render();
-    }, {editable:true}));
+    },
+    {editable:true,
+     validate:()=>{
+       if(!b.bom_lines.some(bomKept) || !r.routing.some(rtKept)) return t('need_lines');
+       // documented HITL rule: low confidence forces explicit human sign-off
+       const pending = r.routing.filter(o=>rtKept(o) && o.confidence==='low' && !S.ackLow[o.op]);
+       if(pending.length) return t('need_ack') + pending.map(o=>`  · OP ${o.op} — ${o.operation}`).join('\n');
+       return null;
+     }}));
 }
 
 /* ---- OP50 quotation ---- */
@@ -782,15 +891,26 @@ function rQuote(){
   stage.appendChild(ar);
 
   const excl = Object.entries(S.excluded), edits = Object.entries(S.edits);
-  if(excl.length || edits.length){
-    const au = el('div','panel');
-    au.innerHTML = `<div class="panel-cap"><span>${t('audit_title')}</span></div>
-      <div class="panel-body">
-        ${excl.length?`<p class="src-lab">${t('audit_excl')}</p><ul class="note-list">${
-          excl.map(([pn,r])=>`<li><b>${esc(pn)}</b> — ${esc(r)}</li>`).join('')}</ul>`:''}
-        ${edits.length?`<p class="src-lab" style="margin-top:${excl.length?'12px':'0'}">${t('audit_edit')}</p><ul class="note-list">${
-          edits.map(([p,v])=>`<li><span class="mono">${esc(p)}</span>: ${esc(v.from)} → <b>${esc(v.to)}</b></li>`).join('')}</ul>`:''}
-      </div>`;
+  const label = (kind,k)=> kind==='bom'
+    ? (S.bom?.bom_lines.find(l=>String(l.pos)===String(k))?.item || `BOM ${k}`)
+    : (S.routing?.routing.find(o=>String(o.op)===String(k))?.operation || `OP ${k}`);
+  const removed = [...Object.keys(S.removed.bom).map(k=>['bom',k]), ...Object.keys(S.removed.rt).map(k=>['rt',k])];
+  const added = [...S.added.bom.map(k=>['bom',k]), ...S.added.rt.map(k=>['rt',k])];
+  const acked = Object.entries(S.ackLow).filter(([,v])=>v).map(([k])=>k);
+  const section = (title,items,gap)=> items.length
+    ? `<p class="src-lab" style="margin-top:${gap?'12px':'0'}">${title}</p><ul class="note-list">${items.join('')}</ul>` : '';
+
+  if(excl.length || edits.length || removed.length || added.length || acked.length){
+    const au = el('div','panel'); let gap = false;
+    const blocks = [
+      [t('audit_excl'), excl.map(([pn,r])=>`<li><b>${esc(pn)}</b> — ${esc(r)}</li>`)],
+      [t('audit_removed'), removed.map(([kind,k])=>`<li><span class="mono">${kind==='bom'?'BOM':'OP'} ${esc(k)}</span> — ${esc(label(kind,k))}</li>`)],
+      [t('audit_added'), added.map(([kind,k])=>`<li><span class="mono">${kind==='bom'?'BOM':'OP'} ${esc(k)}</span> — ${esc(label(kind,k))}</li>`)],
+      [t('audit_ack'), acked.map(k=>`<li><span class="mono">OP ${esc(k)}</span> — ${esc(label('rt',k))}</li>`)],
+      [t('audit_edit'), edits.map(([p,v])=>`<li><span class="mono">${esc(p)}</span>: ${esc(v.from)} → <b>${esc(v.to)}</b></li>`)],
+    ];
+    au.innerHTML = `<div class="panel-cap"><span>${t('audit_title')}</span></div><div class="panel-body">${
+      blocks.map(([ti,items])=>{ const h=section(ti,items,gap); if(items.length) gap=true; return h; }).join('')}</div>`;
     stage.appendChild(au);
   }
 

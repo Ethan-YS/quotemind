@@ -312,6 +312,11 @@ en:{
   pending_hint:'The model rated its own grounding weak here. Confirm each one — or remove the operation — before release.',
   pending_go:'Confirm now',
   replay_note:'Demo replay — this stage\'s output is a cached snapshot of a real model run. Your corrections are carried into the next request, but the replayed answer does not recompute from them. Run a live backend to see corrections propagate end to end.',
+  conflict_title:'⚑ Contradiction inside the feature card',
+  conflict_hint:g=>`The part material reads <b>${g}</b>, but the lines below name a different grade. A card approved as engineering truth must not hold two materials — correct them, or confirm the difference is deliberate (a mating part, a coating, a supplier note).`,
+  conflict_go:'Go to field', conflict_ack:'Confirm deliberate', conflict_acked:'Confirmed ✓',
+  need_conflict:'The feature card still names more than one material. Correct the lines flagged as contradictory — or confirm the difference is deliberate — before release.',
+  audit_conflict:'Material differences confirmed deliberate',
   need_lines:'At least one BOM line and one routing operation must remain.',
   audit_removed:'Removed lines', audit_added:'Engineer-added lines', audit_ack:'Low-confidence operations confirmed',
   new_item:'(new item — describe it)', new_op:'(new operation — describe it)',
@@ -411,6 +416,11 @@ zh:{
   pending_hint:'模型自评此处依据不足。逐条确认——或直接删除该工序——后方可放行。',
   pending_go:'去确认',
   replay_note:'演示回放——本阶段输出是真实跑测的缓存快照。你的修正会随请求传入下一阶段，但回放的答案不会基于修正重算。切换 live 后端即可看到修正端到端传导。',
+  conflict_title:'⚑ 特征卡内部存在矛盾',
+  conflict_hint:g=>`零件材料写的是 <b>${g}</b>，但下列条目写着另一种牌号。签发为工程事实的卡片不能同时存在两个材料——请修正，或确认该差异是有意的（配对件、镀层、供应商备注等）。`,
+  conflict_go:'去修改', conflict_ack:'确认无冲突', conflict_acked:'已确认 ✓',
+  need_conflict:'特征卡中仍存在一个以上的材料牌号。请修正被标记的矛盾条目——或确认该差异是有意的——再放行。',
+  audit_conflict:'已确认为有意的材料差异',
   need_lines:'BOM 与工艺至少各需保留一行。',
   audit_removed:'已删除的行', audit_added:'工程师新增的行', audit_ack:'已确认的低置信工序',
   new_item:'（新增物料——请填写）', new_op:'（新增工序——请填写）',
@@ -452,7 +462,7 @@ const t = k => (L[lang][k] ?? L.en[k] ?? k);
 /* ================= state & helpers ================= */
 const S = { rfq:null, card:null, matches:null, matchesUsed:null, bom:null, routing:null, quote:null,
             source:'sample', uploadId:null, uploadUrl:null, edits:{}, excluded:{},
-            removed:{bom:{},rt:{}}, added:{bom:[],rt:[]}, ackLow:{} };
+            removed:{bom:{},rt:{}}, added:{bom:[],rt:[]}, ackLow:{}, ackConflict:false };
 let current = 0, done = -1;   // done = highest approved stage index
 let MODE = 'demo';
 
@@ -534,6 +544,7 @@ document.addEventListener('blur', e=>{
   refreshTotals();                        // edited minutes/costs roll up immediately
   repriceOn(el.dataset.path);
   refreshStaleBanner();
+  if(el.dataset.path.startsWith('card.')) refreshConflictPanel();
 }, true);
 
 /* Price and margin are two views of one commercial decision: edit either,
@@ -561,6 +572,55 @@ function repriceOn(path){
     node.textContent = otherText;
     node.classList.toggle('edited', otherText !== node.dataset.orig);
   }
+}
+
+/* Rule check on the feature card — the "规则校验" node of the architecture, not
+   just a box on the diagram. A card signed off as engineering truth must not
+   name two materials; the checker cannot know which one is right, so it refuses
+   to guess and asks the engineer to resolve or declare the difference intended. */
+const GRADE_RE = /\b(?:\d{1,2}[A-Z][a-zA-Z]{1,3}\d{1,2}(?:\+[A-Z]{1,2})?|C\d{2}[EU]?|X\d+CrNi\d+-\d+|Ti\d+Al\d+V|EN-GJS-\d+-\d+)\b/g;
+function gradesIn(text){
+  return [...new Set(String(text||'').match(GRADE_RE) || [])];
+}
+function cardConflicts(){
+  const c = S.card; if(!c) return {primary:null, hits:[]};
+  const primary = gradesIn(c.material)[0] || null;
+  if(!primary) return {primary:null, hits:[]};
+  const hits = [];
+  (c.critical_requirements||[]).forEach((x,i)=>{
+    const other = gradesIn(x).filter(g=>g!==primary);
+    if(other.length) hits.push({path:`card.critical_requirements.${i}`, text:x, grades:other});
+  });
+  (c.features||[]).forEach((f,i)=>{
+    const other = gradesIn(f.spec).filter(g=>g!==primary);
+    if(other.length) hits.push({path:`card.features.${i}.spec`, text:f.spec, grades:other});
+  });
+  return {primary, hits};
+}
+
+function refreshConflictPanel(){
+  const slot = document.getElementById('conflictSlot');
+  if(!slot) return;
+  slot.innerHTML = '';
+  const clash = cardConflicts();
+  if(!clash.hits.length){ S.ackConflict = false; return; }   // resolved by editing: drop the override
+  const cb = el('div','flag-box'); cb.id='cardConflict';
+  cb.innerHTML = `<div class="panel-cap">${t('conflict_title')}</div>
+    <p style="font-size:12.5px;color:#6b1710;margin-bottom:8px">${t('conflict_hint')(esc(clash.primary))}</p>` +
+    clash.hits.map(h=>`<div class="pending-row"><button class="go" data-path="${esc(h.path)}">${t('conflict_go')}</button>
+      <span><b>${esc(h.grades.join(', '))}</b> — ${esc(h.text)}</span></div>`).join('') +
+    `<div style="margin-top:10px"><button class="ack-btn${S.ackConflict?' on':''}" id="ackConflict">${
+      S.ackConflict?t('conflict_acked'):t('conflict_ack')}</button></div>`;
+  slot.appendChild(cb);
+  cb.querySelectorAll('.go').forEach(btn=>{
+    btn.onclick = ()=>{
+      const node = document.querySelector(`[data-path="${btn.dataset.path}"]`);
+      node?.scrollIntoView({block:'center', behavior:'smooth'});
+      node?.closest('tr,li')?.classList.add('flash');
+      node?.focus();
+    };
+  });
+  cb.querySelector('#ackConflict').onclick = ()=>{ S.ackConflict = !S.ackConflict; refreshConflictPanel(); };
 }
 
 /* The letter-vs-cost-sheet check reads live state at the moment it matters,
@@ -806,6 +866,10 @@ function rCard(){
     stage.appendChild(fb);
   }
 
+  const conflictSlot = el('div'); conflictSlot.id = 'conflictSlot';
+  stage.appendChild(conflictSlot);
+  refreshConflictPanel();
+
   stage.appendChild(approveBar(t('s20_hint'),
     async ()=>{
       loadingView(t('s20_load'), t('chk_retrieval'));
@@ -813,7 +877,15 @@ function rCard(){
       S.matches = await api('/stage/retrieve',{card:S.card});
       await wait(Math.max(0, 1900-(Date.now()-t0)));
       done=Math.max(done,1); current=2; render();
-    }, {editable:true}));
+    },
+    {editable:true,
+     validate:()=> (cardConflicts().hits.length && !S.ackConflict) ? t('need_conflict') : null,
+     onInvalid:()=>{
+       refreshConflictPanel();
+       const box = document.getElementById('cardConflict');
+       box?.scrollIntoView({block:'center', behavior:'smooth'});
+       box?.classList.add('flash');
+     }}));
 }
 
 /* ---- OP30 similar parts ---- */
@@ -1073,13 +1145,14 @@ function rQuote(){
   const section = (title,items,gap)=> items.length
     ? `<p class="src-lab" style="margin-top:${gap?'12px':'0'}">${title}</p><ul class="note-list">${items.join('')}</ul>` : '';
 
-  if(excl.length || edits.length || removed.length || added.length || acked.length){
+  if(excl.length || edits.length || removed.length || added.length || acked.length || S.ackConflict){
     const au = el('div','panel'); let gap = false;
     const blocks = [
       [t('audit_excl'), excl.map(([pn,r])=>`<li><b>${esc(pn)}</b> — ${esc(r)}</li>`)],
       [t('audit_removed'), removed.map(([kind,k])=>`<li><span class="mono">${kind==='bom'?'BOM':'OP'} ${esc(k)}</span> — ${esc(label(kind,k))}</li>`)],
       [t('audit_added'), added.map(([kind,k])=>`<li><span class="mono">${kind==='bom'?'BOM':'OP'} ${esc(k)}</span> — ${esc(label(kind,k))}</li>`)],
       [t('audit_ack'), acked.map(k=>`<li><span class="mono">OP ${esc(k)}</span> — ${esc(label('rt',k))}</li>`)],
+      [t('audit_conflict'), S.ackConflict ? cardConflicts().hits.map(h=>`<li>${esc(h.grades.join(', '))} — ${esc(h.text)}</li>`) : []],
       [t('audit_edit'), edits.map(([p,v])=>`<li><span class="mono">${esc(p)}</span>: ${esc(v.from)} → <b>${esc(v.to)}</b></li>`)],
     ];
     au.innerHTML = `<div class="panel-cap"><span>${t('audit_title')}</span></div><div class="panel-body">${

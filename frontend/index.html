@@ -134,6 +134,15 @@ td.mono{font-family:var(--mono);font-size:12px}
 .loading .bar{height:3px;background:var(--line-soft);margin:18px auto 0;max-width:340px;position:relative;overflow:hidden}
 .loading .bar i{position:absolute;inset:0;width:38%;background:var(--blue);animation:sweep 1.1s ease-in-out infinite alternate}
 @keyframes sweep{to{transform:translateX(165%)}}
+.check-list{list-style:none;max-width:420px;margin:22px auto 0;text-align:left;
+  font-family:var(--mono);font-size:11.5px;line-height:2}
+.check-list li{color:#a9a390;transition:color .3s}
+.check-list li::before{content:'○ ';color:inherit}
+.check-list li.active{color:var(--blue)}
+.check-list li.active::before{content:'▸ '}
+.check-list li.active::after{content:'▌';animation:blink .8s steps(1) infinite;margin-left:4px}
+.check-list li.done{color:var(--ink)}
+.check-list li.done::before{content:'✓ ';color:var(--green)}
 /* intake layout */
 .intake{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .rfq-pre{font-family:var(--mono);font-size:11.5px;line-height:1.65;white-space:pre-wrap;padding:14px 16px;max-height:430px;overflow:auto}
@@ -226,6 +235,9 @@ en:{
   was:'was',
   load_live:'LIVE call in progress — a reasoning/vision stage can take 1–3 minutes. Do not reload; each click is a real model call.',
   stage_fail:'Stage failed',
+  chk_drawing:['Part type & envelope','Material & general tolerances','Bearing seats & fits','Spline specification','Keyway','Thread','Runout requirement (GD&T)','Surface finish','Heat treatment & hardness','Demagnetizing requirement','Certificates','Quantities & delivery terms'],
+  chk_bomproc:['Raw material & stock size','Operation cost lines','Routing operations & workcenters','Hardening & straightening steps','Grinding & inspection plan','Cycle time calibration vs references','Plant recommendation','Open questions for the engineer'],
+  chk_quote:['Cost roll-up @ 250 pcs','Cost roll-up @ 500 pcs','Tooling & lead time','Assumptions & risks','Quotation letter draft'],
   s20_t:'Drawing Review',
   s20_d:'AI-extracted part feature card. Blue values are drafts — click any of them to correct; your corrections feed every later stage. Confidence chips route attention.',
   s20_id:'Identification', s20_ft:'Extracted features', s20_items:'items',
@@ -294,6 +306,9 @@ zh:{
   was:'原值',
   load_live:'LIVE 真实调用中——推理/视觉阶段可能需要 1–3 分钟。请勿刷新；每次点击都是一次真实模型调用。',
   stage_fail:'阶段执行失败',
+  chk_drawing:['零件类型与外形包络','材料与通用公差','轴承座尺寸与配合','花键规格','键槽','螺纹','跳动要求（GD&T）','表面粗糙度','热处理与硬度','去磁要求','材质证明','数量与交付条款'],
+  chk_bomproc:['毛坯与料径','作业成本行','工艺路线与工作中心','淬火与校直工序','磨削与检验方案','节拍对参考件校准','推荐工厂','留给工程师的待确认问题'],
+  chk_quote:['250 件成本汇总','500 件成本汇总','工装与交期','假设与风险','报价信草稿'],
   s20_t:'图纸审查',
   s20_d:'AI 抽取的零件特征卡。蓝色值为草稿——点击即可修正；你的修正会传入后续所有阶段。置信度标签指示注意力方向。',
   s20_id:'零件识别', s20_ft:'抽取特征', s20_items:'项',
@@ -459,11 +474,28 @@ function approveBar(hint, onNext, opts={}){
   return bar;
 }
 
-function loadingView(msg){
+let loadTimer = null;
+
+function loadingView(msg, items){
+  clearInterval(loadTimer);
   const stage=$('#stage'); stage.innerHTML='';
   const box = el('div','loading');
   box.appendChild(el('div','scan',esc(msg)));
   box.appendChild(el('div','bar','<i></i>'));
+  if(items?.length){
+    const ul = el('ul','check-list', items.map(x=>`<li>${esc(x)}</li>`).join(''));
+    box.appendChild(ul);
+    const lis = [...ul.children];
+    let i = 0;
+    lis[0].classList.add('active');
+    // Presentational pacing: items advance on a timer; the LAST item never
+    // completes by itself — it waits for the real response to arrive.
+    loadTimer = setInterval(()=>{
+      if(i >= lis.length-1) return;
+      lis[i].classList.remove('active'); lis[i].classList.add('done');
+      i++; lis[i].classList.add('active');
+    }, MODE==='live' ? 8000 : 150);
+  }
   if(MODE==='live') box.appendChild(el('p','src-note',esc(t('load_live')))).style.marginTop='16px';
   stage.appendChild(box);
 }
@@ -474,7 +506,7 @@ function stageHead(title, opNo, desc){
           <p class="stage-desc">${desc}</p>`;
 }
 
-function render(){ renderChrome(); renderRail(); [rIntake,rCard,rMatches,rBomRouting,rQuote][current](); window.scrollTo({top:0}); }
+function render(){ clearInterval(loadTimer); renderChrome(); renderRail(); [rIntake,rCard,rMatches,rBomRouting,rQuote][current](); window.scrollTo({top:0}); }
 
 /* ---- OP10 intake ---- */
 function rIntake(){
@@ -517,10 +549,10 @@ function rIntake(){
 
   stage.appendChild(approveBar(t('s10_hint'),
     async ()=>{
-      loadingView(t('s10_load'));
+      loadingView(t('s10_load'), t('chk_drawing'));
       const t0=Date.now();
       S.card = await api('/stage/drawing',{rfq_text:S.rfq, upload_id: custom ? S.uploadId : null});
-      await wait(Math.max(0, 1400-(Date.now()-t0)));
+      await wait(Math.max(0, 2300-(Date.now()-t0)));
       done=Math.max(done,0); current=1; render();
     },
     custom && !S.uploadId ? {disabled:true, disabledReason:t('src_need_file')} : {}));
@@ -595,11 +627,11 @@ function rMatches(){
 
   stage.appendChild(approveBar(t('s30_hint'),
     async ()=>{
-      loadingView(t('s30_load'));
+      loadingView(t('s30_load'), t('chk_bomproc'));
       const t0=Date.now();
       S.bom = await api('/stage/bom',{card:S.card,matches:S.matches});
       S.routing = await api('/stage/process',{card:S.card,bom:S.bom,matches:S.matches});
-      await wait(Math.max(0, 1600-(Date.now()-t0)));
+      await wait(Math.max(0, 1900-(Date.now()-t0)));
       done=Math.max(done,2); current=3; render();
     }));
 }
@@ -641,10 +673,10 @@ function rBomRouting(){
 
   stage.appendChild(approveBar(t('s40_hint'),
     async ()=>{
-      loadingView(t('s40_load'));
+      loadingView(t('s40_load'), t('chk_quote'));
       const t0=Date.now();
       S.quote = await api('/stage/quote',{rfq_text:S.rfq,card:S.card,bom:S.bom,routing:S.routing,matches:S.matches});
-      await wait(Math.max(0, 1400-(Date.now()-t0)));
+      await wait(Math.max(0, 1500-(Date.now()-t0)));
       done=Math.max(done,3); current=4; render();
     }));
 }

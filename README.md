@@ -23,8 +23,9 @@ uvicorn app:app --port 8000
 |---|---|---|
 | Gemini API | `export GEMINI_API_KEY=...` | 默认 `gemini-2.5-pro`，`QUOTEMIND_MODEL` 可覆盖 |
 | Claude CLI | `QUOTEMIND_BACKEND=claude-cli` | shell 到本地已登录的 Claude Code（`claude -p` 无头模式），**代码库不接触任何 API key** |
+| Codex CLI | `QUOTEMIND_BACKEND=codex-cli` | 同理走 `codex exec`（含 `-i` 图纸视觉输入），模型 `QUOTEMIND_CODEX_MODEL`（默认 gpt-5.5） |
 
-重新生成 demo 缓存：`QUOTEMIND_BACKEND=claude-cli python scripts/regen_demo_cache.py`（四阶段输出先过 schema 校验再落盘，失败保留旧缓存）。
+重新生成 demo 缓存：`QUOTEMIND_BACKEND=codex-cli python scripts/regen_demo_cache.py`（四阶段输出先过 schema 校验再落盘，失败保留旧缓存）。
 
 ## 架构决策（为什么这么设计）
 

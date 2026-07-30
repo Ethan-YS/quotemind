@@ -6,6 +6,8 @@ Backend is chosen by QUOTEMIND_BACKEND, or auto-detected:
 - "claude-cli" : shells out to a locally authenticated Claude Code CLI
                  (`claude -p`, headless). No API key ever touches this
                  codebase — auth lives in the CLI.
+- "codex-cli"  : same idea via OpenAI Codex CLI (`codex exec`), model set
+                 with QUOTEMIND_CODEX_MODEL (default gpt-5.5).
 - "demo"       : replays the bundled demo cache, so reviewers can run the
                  full flow with zero setup.
 
@@ -40,8 +42,15 @@ def backend() -> str:
     return "gemini" if os.getenv("GEMINI_API_KEY") else "demo"
 
 
+CODEX_MODEL = os.getenv("QUOTEMIND_CODEX_MODEL", "gpt-5.5")
+
+
 def backend_label() -> str:
-    return {"gemini": GEMINI_MODEL, "claude-cli": "claude-cli"}.get(backend(), "demo")
+    return {
+        "gemini": GEMINI_MODEL,
+        "claude-cli": "claude-cli",
+        "codex-cli": f"codex · {CODEX_MODEL}",
+    }.get(backend(), "demo")
 
 
 def call_llm(stage: str, prompt: str, image_path: str | None = None) -> dict:
@@ -51,6 +60,8 @@ def call_llm(stage: str, prompt: str, image_path: str | None = None) -> dict:
         return _gemini_json(prompt, image_path)
     if b == "claude-cli":
         return _claude_cli_json(prompt, image_path)
+    if b == "codex-cli":
+        return _codex_cli_json(prompt, image_path)
     cached = CACHE_DIR / f"{stage}.json"
     if not cached.exists():
         raise RuntimeError(
@@ -96,6 +107,30 @@ def _claude_cli_json(prompt: str, image_path: str | None = None) -> dict:
     if result.returncode != 0:
         raise RuntimeError(f"claude-cli failed: {result.stderr[:500]}")
     return _extract_json(result.stdout)
+
+
+def _codex_cli_json(prompt: str, image_path: str | None = None) -> dict:
+    import tempfile
+
+    full = prompt + "\n\nReturn ONLY the JSON object — no markdown fences, no commentary."
+    with tempfile.NamedTemporaryFile(mode="r", suffix=".txt", delete=False) as tf:
+        out_path = tf.name
+    try:
+        # NB: prompt goes directly after `exec` — the variadic -i flag would
+        # otherwise swallow a trailing positional as another image path.
+        cmd = [
+            "codex", "exec", full, "-m", CODEX_MODEL, "--skip-git-repo-check",
+            "-s", "read-only", "-o", out_path,
+        ]
+        if image_path:
+            cmd += ["-i", str(Path(image_path).resolve())]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        last = Path(out_path).read_text().strip()
+        if not last:
+            raise RuntimeError(f"codex-cli produced no output: {result.stderr[:500]}")
+        return _extract_json(last)
+    finally:
+        Path(out_path).unlink(missing_ok=True)
 
 
 def _extract_json(text: str) -> dict:
